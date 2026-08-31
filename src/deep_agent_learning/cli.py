@@ -5,9 +5,12 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from contextlib import nullcontext
 from pathlib import Path
+from typing import Any
 
 from langgraph.checkpoint.sqlite import SqliteSaver
+from langsmith import Client, tracing_context
 
 from deep_agent_learning.agent import create_agent
 from deep_agent_learning.models import (
@@ -22,6 +25,7 @@ EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXIT_ERROR = 2
 ARTIFACT_NAME = "briefing.md"
+DEFAULT_TRACE_PROJECT = "deep-agent-learning"
 DEFAULT_QUESTION = (
     "Compare sales tax and income tax. Explain who pays each and when it is collected."
 )
@@ -55,6 +59,16 @@ def create_parser() -> argparse.ArgumentParser:
         "--thread-id",
         help="Resume the conversation associated with this checkpoint thread.",
     )
+    parser.add_argument(
+        "--trace",
+        action="store_true",
+        help="Upload the run tree to LangSmith using LANGSMITH_API_KEY.",
+    )
+    parser.add_argument(
+        "--trace-project",
+        default=os.environ.get("LANGSMITH_PROJECT", DEFAULT_TRACE_PROJECT),
+        help="LangSmith project for traced runs (default: %(default)s).",
+    )
     return parser
 
 
@@ -63,6 +77,8 @@ def describe_agent(
     workspace: Path | None = None,
     checkpoint_db: Path | None = None,
     thread_id: str | None = None,
+    trace: bool = False,
+    trace_project: str = DEFAULT_TRACE_PROJECT,
 ) -> str:
     """Return a no-credentials view of the example's control flow."""
     description = [f"Model: {model}"]
@@ -104,7 +120,33 @@ def describe_agent(
                 f"Thread ID: {thread_id}",
             ]
         )
+    if trace:
+        description.extend(
+            [
+                "LangSmith tracing: enabled",
+                f"Trace project: {trace_project}",
+            ]
+        )
     return "\n".join(description)
+
+
+def invoke_agent(args: argparse.Namespace, payload: dict[str, Any]) -> dict[str, Any]:
+    """Build and invoke the agent with optional checkpointing."""
+    if args.checkpoint_db is not None:
+        args.checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
+        with SqliteSaver.from_conn_string(str(args.checkpoint_db)) as checkpointer:
+            agent = create_agent(
+                args.model,
+                workspace=args.workspace,
+                checkpointer=checkpointer,
+            )
+            return agent.invoke(
+                payload,
+                config={"configurable": {"thread_id": args.thread_id}},
+            )
+
+    agent = create_agent(args.model, workspace=args.workspace)
+    return agent.invoke(payload)
 
 
 def main() -> int:
@@ -116,6 +158,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return EXIT_ERROR
+    configure_azure_environment()
     if args.inspect:
         print(
             describe_agent(
@@ -123,9 +166,17 @@ def main() -> int:
                 args.workspace,
                 args.checkpoint_db,
                 args.thread_id,
+                args.trace,
+                args.trace_project,
             )
         )
         return EXIT_SUCCESS
+    if args.trace and not os.environ.get("LANGSMITH_API_KEY"):
+        print(
+            "LANGSMITH_API_KEY is required when --trace is enabled.",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
 
     if not os.environ.get("OPENAI_API_KEY") and args.model.startswith("openai:"):
         print(
@@ -141,25 +192,31 @@ def main() -> int:
             f"as Markdown at /{ARTIFACT_NAME}."
         )
     payload = {"messages": [{"role": "user", "content": question}]}
+    trace_client = Client() if args.trace else None
+    trace_scope = (
+        tracing_context(
+            enabled=True,
+            project_name=args.trace_project,
+            tags=["deep-agent-learning", "tax-briefing"],
+            metadata={
+                "model": args.model,
+                "thread_id": args.thread_id or "not-configured",
+                "artifact_enabled": args.workspace is not None,
+            },
+            client=trace_client,
+        )
+        if args.trace
+        else nullcontext()
+    )
     try:
-        if args.checkpoint_db is not None:
-            args.checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
-            with SqliteSaver.from_conn_string(str(args.checkpoint_db)) as checkpointer:
-                agent = create_agent(
-                    args.model,
-                    workspace=args.workspace,
-                    checkpointer=checkpointer,
-                )
-                result = agent.invoke(
-                    payload,
-                    config={"configurable": {"thread_id": args.thread_id}},
-                )
-        else:
-            agent = create_agent(args.model, workspace=args.workspace)
-            result = agent.invoke(payload)
+        with trace_scope:
+            result = invoke_agent(args, payload)
     except ValueError as error:
         print(error, file=sys.stderr)
         return EXIT_ERROR
+    finally:
+        if trace_client is not None:
+            trace_client.flush()
     print(result["messages"][-1].content)
     if args.workspace is not None:
         artifact_path = args.workspace / ARTIFACT_NAME
@@ -167,4 +224,6 @@ def main() -> int:
             print(f"Expected artifact was not created: {artifact_path}", file=sys.stderr)
             return EXIT_FAILURE
         print(f"Artifact: {artifact_path.resolve()}")
+    if args.trace:
+        print(f"LangSmith project: {args.trace_project}")
     return EXIT_SUCCESS

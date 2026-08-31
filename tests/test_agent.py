@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from types import SimpleNamespace
 from typing import Any
 
@@ -117,6 +118,17 @@ def test_describe_agent_shows_checkpoint_thread(tmp_path) -> None:
 
     assert f"Checkpoint database: {checkpoint_db.resolve()}" in result
     assert "Thread ID: tax-session" in result
+
+
+def test_describe_agent_shows_langsmith_project() -> None:
+    result = describe_agent(
+        "openai:test-model",
+        trace=True,
+        trace_project="tax-learning",
+    )
+
+    assert "LangSmith tracing: enabled" in result
+    assert "Trace project: tax-learning" in result
 
 
 def test_main_requests_and_reports_artifact(monkeypatch, tmp_path, capsys) -> None:
@@ -241,6 +253,87 @@ def test_main_rejects_incomplete_checkpoint_options(monkeypatch, tmp_path, capsy
 
     assert main() == EXIT_ERROR
     assert "must be provided together" in capsys.readouterr().err
+
+
+def test_main_rejects_trace_without_langsmith_key(monkeypatch, capsys) -> None:
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.setattr("deep_agent_learning.cli.configure_azure_environment", lambda: None)
+    monkeypatch.setattr("sys.argv", ["deep-agent-learning", "--trace"])
+
+    assert main() == EXIT_ERROR
+    assert "LANGSMITH_API_KEY is required" in capsys.readouterr().err
+
+
+def test_main_inspects_trace_without_langsmith_key(monkeypatch, capsys) -> None:
+    monkeypatch.delenv("LANGSMITH_API_KEY", raising=False)
+    monkeypatch.setattr("deep_agent_learning.cli.configure_azure_environment", lambda: None)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "--inspect",
+            "--trace",
+            "--trace-project",
+            "tax-learning",
+        ],
+    )
+
+    assert main() == EXIT_SUCCESS
+    output = capsys.readouterr().out
+    assert "LangSmith tracing: enabled" in output
+    assert "Trace project: tax-learning" in output
+
+
+def test_main_traces_run_with_project_and_metadata(monkeypatch, capsys) -> None:
+    captured: dict[str, Any] = {}
+
+    class TracedAgent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            captured["payload"] = payload
+            return {"messages": [SimpleNamespace(content="Traced briefing.")]}
+
+    class FakeClient:
+        def flush(self) -> None:
+            captured["flushed"] = True
+
+    @contextmanager
+    def fake_tracing_context(**kwargs: Any):
+        captured["trace_context"] = kwargs
+        yield
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("LANGSMITH_API_KEY", "test-langsmith-key")
+    monkeypatch.setattr("deep_agent_learning.cli.Client", FakeClient)
+    monkeypatch.setattr("deep_agent_learning.cli.tracing_context", fake_tracing_context)
+    monkeypatch.setattr(
+        "deep_agent_learning.cli.create_agent",
+        lambda model_name, workspace=None: TracedAgent(),
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "Explain property tax.",
+            "--model",
+            "openai:test-model",
+            "--trace",
+            "--trace-project",
+            "tax-learning",
+        ],
+    )
+
+    assert main() == EXIT_SUCCESS
+    trace_context = captured["trace_context"]
+    assert trace_context["enabled"] is True
+    assert trace_context["project_name"] == "tax-learning"
+    assert trace_context["tags"] == ["deep-agent-learning", "tax-briefing"]
+    assert trace_context["metadata"] == {
+        "model": "openai:test-model",
+        "thread_id": "not-configured",
+        "artifact_enabled": False,
+    }
+    assert captured["flushed"] is True
+    assert "LangSmith project: tax-learning" in capsys.readouterr().out
 
 
 def test_describe_agent_shows_underlying_azure_model() -> None:

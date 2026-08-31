@@ -4,6 +4,7 @@ from deep_agent_learning.agent import create_agent
 from deep_agent_learning.cli import (
     ARTIFACT_NAME,
     DEFAULT_QUESTION,
+    DEFAULT_TRACE_PROJECT,
     EXIT_ERROR,
     EXIT_FAILURE,
     EXIT_SUCCESS,
@@ -34,6 +35,7 @@ __all__ = [
     "AZURE_MODEL",
     "DEFAULT_MODEL",
     "DEFAULT_QUESTION",
+    "DEFAULT_TRACE_PROJECT",
     "EXIT_ERROR",
     "EXIT_FAILURE",
     "EXIT_SUCCESS",

@@ -310,10 +310,10 @@ remain application responsibilities.
 
 ## Next in the series
 
-Part 6 will enable LangSmith tracing and inspect how coordinator, specialist,
-tool, filesystem, and checkpoint activity appears across parent and child runs.
-That visibility will prepare the project for behavior evaluation rather than
-manual output inspection alone.
+[Part 6](../06-trace-and-evaluate/README.md) enables LangSmith tracing and
+inspects how coordinator, specialist, tool, filesystem, and checkpoint activity
+appears across parent and child runs. That visibility prepares the project for
+behavior evaluation rather than manual output inspection alone.
 
 ## Series roadmap
 
@@ -322,4 +322,4 @@ manual output inspection alone.
 3. [Add a jurisdiction specialist and learn delegation boundaries](../03-add-a-jurisdiction-specialist/README.md).
 4. [Give the agent a filesystem workspace and produce a briefing artifact](../04-write-a-briefing-artifact/README.md).
 5. Add SQLite checkpointing so work can pause and resume (this article).
-6. Add tracing and evaluate coordinator and subagent behavior.
+6. [Trace and evaluate coordinator and subagent behavior](../06-trace-and-evaluate/README.md).

@@ -475,6 +475,7 @@ dependencies = [
     { name = "deepagents" },
     { name = "langchain-openai" },
     { name = "langgraph-checkpoint-sqlite" },
+    { name = "langsmith" },
     { name = "python-dotenv" },
 ]
 
@@ -493,6 +494,7 @@ requires-dist = [
     { name = "deepagents", specifier = ">=0.7.11,<0.8" },
     { name = "langchain-openai", specifier = ">=1.1,<2" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3,<4" },
+    { name = "langsmith", specifier = ">=0.11,<0.12" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
 ]
 

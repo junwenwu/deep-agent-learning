@@ -329,4 +329,4 @@ team built here.
 3. Add a jurisdiction specialist and learn delegation boundaries (this article).
 4. [Give the agent a filesystem workspace and produce a briefing artifact](../04-write-a-briefing-artifact/README.md).
 5. [Add SQLite checkpointing so work can pause and resume](../05-resume-with-checkpointing/README.md).
-6. Add tracing and evaluate coordinator and subagent behavior.
+6. [Trace and evaluate coordinator and subagent behavior](../06-trace-and-evaluate/README.md).

@@ -192,6 +192,19 @@ uv run --offline --no-sync deep-agent-learning \
 Checkpoint databases contain conversation and graph state. The local
 `.deep-agent/` directory is ignored by Git and should not contain credentials.
 
+To upload a run tree to LangSmith, add `LANGSMITH_API_KEY` to your local `.env`
+and enable tracing explicitly:
+
+```bash
+uv run --offline --no-sync deep-agent-learning \
+  --trace \
+  --trace-project deep-agent-learning \
+  "Compare property tax with state and local tax jurisdictions."
+```
+
+Tracing can include prompts, responses, and tool results. Use synthetic or
+approved data and apply your organization's retention and access policies.
+
 ## Step 6: Observe the reasoning loop
 
 Read the returned message history or connect LangSmith tracing to see this sequence:
@@ -223,4 +236,4 @@ After the first live run, make one change at a time:
 2. [Add a second specialist for jurisdiction research](docs/series/03-add-a-jurisdiction-specialist/README.md).
 3. [Add a filesystem backend and write a briefing artifact](docs/series/04-write-a-briefing-artifact/README.md).
 4. [Add SQLite checkpointing and resume a conversation](docs/series/05-resume-with-checkpointing/README.md).
-5. Enable LangSmith tracing and inspect the parent and subagent runs.
+5. [Trace and evaluate coordinator and specialist behavior](docs/series/06-trace-and-evaluate/README.md).
