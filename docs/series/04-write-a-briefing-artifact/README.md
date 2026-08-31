@@ -299,9 +299,10 @@ for an application that needs stronger guarantees.
 
 ## Next in the series
 
-Part 5 will add checkpointing so a conversation can pause and resume with the
-same thread state. The artifact workspace will remain separate from conversational
-state: one persists deliverables, while the other persists graph progress.
+[Part 5](../05-resume-with-checkpointing/README.md) adds SQLite checkpointing so
+a conversation can pause and resume with the same thread state. The artifact
+workspace remains separate from conversational state: one persists deliverables,
+while the other persists graph progress.
 
 ## Series roadmap
 
@@ -309,5 +310,5 @@ state: one persists deliverables, while the other persists graph progress.
 2. [Extend the tax tool with property tax](../02-extend-the-tax-tool/README.md).
 3. [Add a jurisdiction specialist and learn delegation boundaries](../03-add-a-jurisdiction-specialist/README.md).
 4. Give the agent a filesystem workspace and produce a briefing artifact (this article).
-5. Add checkpointing so work can pause and resume.
+5. [Add SQLite checkpointing so work can pause and resume](../05-resume-with-checkpointing/README.md).
 6. Add tracing and evaluate coordinator and subagent behavior.

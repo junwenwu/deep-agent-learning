@@ -5,16 +5,23 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
+
 from deep_agent_learning.models import resolve_model
 from deep_agent_learning.tools import lookup_tax_jurisdiction, lookup_tax_topic
 
 
-def create_agent(model_name: str, workspace: Path | None = None) -> Any:
+def create_agent(
+    model_name: str,
+    workspace: Path | None = None,
+    checkpointer: BaseCheckpointSaver | None = None,
+) -> Any:
     """Build the coordinator and its specialist research team.
 
     Args:
         model_name: ``azure-openai`` or a LangChain ``provider:model`` identifier.
         workspace: Optional local directory exposed as the agent's virtual filesystem root.
+        checkpointer: Optional LangGraph checkpoint saver for thread state.
 
     Returns:
         A compiled LangGraph agent.
@@ -70,4 +77,5 @@ def create_agent(model_name: str, workspace: Path | None = None) -> Any:
         ),
         subagents=[tax_researcher, jurisdiction_researcher],
         backend=backend,
+        checkpointer=checkpointer,
     )

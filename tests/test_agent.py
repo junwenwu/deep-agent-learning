@@ -81,6 +81,7 @@ def test_create_agent_registers_specialists_with_distinct_tools(
     monkeypatch.setattr("deepagents.create_deep_agent", capture_agent)
 
     assert create_agent("openai:test-model", workspace=tmp_path) == "compiled-agent"
+    assert captured["checkpointer"] is None
     subagents = captured["subagents"]
     assert [subagent["name"] for subagent in subagents] == [
         "tax-researcher",
@@ -103,6 +104,19 @@ def test_describe_agent_shows_artifact_workspace(tmp_path) -> None:
 
     assert f"Artifact workspace: {tmp_path.resolve()}" in result
     assert f"write_file('/{ARTIFACT_NAME}')" in result
+
+
+def test_describe_agent_shows_checkpoint_thread(tmp_path) -> None:
+    checkpoint_db = tmp_path / "state" / "checkpoints.sqlite"
+
+    result = describe_agent(
+        "openai:test-model",
+        checkpoint_db=checkpoint_db,
+        thread_id="tax-session",
+    )
+
+    assert f"Checkpoint database: {checkpoint_db.resolve()}" in result
+    assert "Thread ID: tax-session" in result
 
 
 def test_main_requests_and_reports_artifact(monkeypatch, tmp_path, capsys) -> None:
@@ -167,6 +181,66 @@ def test_main_fails_when_requested_artifact_is_missing(
 
     assert main() == EXIT_FAILURE
     assert "Expected artifact was not created" in capsys.readouterr().err
+
+
+def test_main_passes_sqlite_checkpointer_and_thread_config(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    captured: dict[str, Any] = {}
+    checkpoint_db = tmp_path / "state" / "checkpoints.sqlite"
+
+    class CheckpointAgent:
+        def invoke(
+            self, payload: dict[str, Any], config: dict[str, Any]
+        ) -> dict[str, Any]:
+            captured["payload"] = payload
+            captured["config"] = config
+            return {"messages": [SimpleNamespace(content="Conversation saved.")]}
+
+    def create_checkpoint_agent(
+        model_name: str, workspace=None, checkpointer=None
+    ) -> CheckpointAgent:
+        captured["model_name"] = model_name
+        captured["checkpointer"] = checkpointer
+        return CheckpointAgent()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "deep_agent_learning.cli.create_agent", create_checkpoint_agent
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "Explain property tax.",
+            "--model",
+            "openai:test-model",
+            "--checkpoint-db",
+            str(checkpoint_db),
+            "--thread-id",
+            "tax-session",
+        ],
+    )
+
+    assert main() == EXIT_SUCCESS
+    assert type(captured["checkpointer"]).__name__ == "SqliteSaver"
+    assert captured["config"] == {"configurable": {"thread_id": "tax-session"}}
+    assert checkpoint_db.parent.is_dir()
+    assert "Conversation saved." in capsys.readouterr().out
+
+
+def test_main_rejects_incomplete_checkpoint_options(monkeypatch, tmp_path, capsys) -> None:
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "--checkpoint-db",
+            str(tmp_path / "checkpoints.sqlite"),
+        ],
+    )
+
+    assert main() == EXIT_ERROR
+    assert "must be provided together" in capsys.readouterr().err
 
 
 def test_describe_agent_shows_underlying_azure_model() -> None:

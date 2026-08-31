@@ -7,6 +7,8 @@ import os
 import sys
 from pathlib import Path
 
+from langgraph.checkpoint.sqlite import SqliteSaver
+
 from deep_agent_learning.agent import create_agent
 from deep_agent_learning.models import (
     AZURE_DEPLOYMENT_MODEL,
@@ -44,10 +46,24 @@ def create_parser() -> argparse.ArgumentParser:
         type=Path,
         help="Persist a Markdown briefing in this local artifact directory.",
     )
+    parser.add_argument(
+        "--checkpoint-db",
+        type=Path,
+        help="Persist conversation checkpoints in this SQLite database.",
+    )
+    parser.add_argument(
+        "--thread-id",
+        help="Resume the conversation associated with this checkpoint thread.",
+    )
     return parser
 
 
-def describe_agent(model: str, workspace: Path | None = None) -> str:
+def describe_agent(
+    model: str,
+    workspace: Path | None = None,
+    checkpoint_db: Path | None = None,
+    thread_id: str | None = None,
+) -> str:
     """Return a no-credentials view of the example's control flow."""
     description = [f"Model: {model}"]
     if model == AZURE_MODEL:
@@ -81,14 +97,34 @@ def describe_agent(model: str, workspace: Path | None = None) -> str:
                 f"  -> write_file('/{ARTIFACT_NAME}')",
             ]
         )
+    if checkpoint_db is not None and thread_id is not None:
+        description.extend(
+            [
+                f"Checkpoint database: {checkpoint_db.resolve()}",
+                f"Thread ID: {thread_id}",
+            ]
+        )
     return "\n".join(description)
 
 
 def main() -> int:
     """Run inspection mode or invoke the live agent."""
     args = create_parser().parse_args()
+    if (args.checkpoint_db is None) != (args.thread_id is None):
+        print(
+            "--checkpoint-db and --thread-id must be provided together.",
+            file=sys.stderr,
+        )
+        return EXIT_ERROR
     if args.inspect:
-        print(describe_agent(args.model, args.workspace))
+        print(
+            describe_agent(
+                args.model,
+                args.workspace,
+                args.checkpoint_db,
+                args.thread_id,
+            )
+        )
         return EXIT_SUCCESS
 
     if not os.environ.get("OPENAI_API_KEY") and args.model.startswith("openai:"):
@@ -98,18 +134,32 @@ def main() -> int:
         )
         return EXIT_ERROR
 
-    try:
-        agent = create_agent(args.model, workspace=args.workspace)
-    except ValueError as error:
-        print(error, file=sys.stderr)
-        return EXIT_ERROR
     question = args.question
     if args.workspace is not None:
         question += (
             f"\n\nAfter synthesizing the answer, use write_file to save the same briefing "
             f"as Markdown at /{ARTIFACT_NAME}."
         )
-    result = agent.invoke({"messages": [{"role": "user", "content": question}]})
+    payload = {"messages": [{"role": "user", "content": question}]}
+    try:
+        if args.checkpoint_db is not None:
+            args.checkpoint_db.parent.mkdir(parents=True, exist_ok=True)
+            with SqliteSaver.from_conn_string(str(args.checkpoint_db)) as checkpointer:
+                agent = create_agent(
+                    args.model,
+                    workspace=args.workspace,
+                    checkpointer=checkpointer,
+                )
+                result = agent.invoke(
+                    payload,
+                    config={"configurable": {"thread_id": args.thread_id}},
+                )
+        else:
+            agent = create_agent(args.model, workspace=args.workspace)
+            result = agent.invoke(payload)
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return EXIT_ERROR
     print(result["messages"][-1].content)
     if args.workspace is not None:
         artifact_path = args.workspace / ARTIFACT_NAME

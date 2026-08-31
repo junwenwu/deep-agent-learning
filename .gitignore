@@ -16,3 +16,6 @@ wheels/
 
 # Agent-generated artifacts
 /artifacts/
+
+# Local conversation checkpoints
+/.deep-agent/

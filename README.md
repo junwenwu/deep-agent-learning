@@ -174,6 +174,24 @@ The agent sees the virtual path `/briefing.md`, while `FilesystemBackend` maps i
 under the selected host directory. The generated `artifacts/` directory is
 ignored by Git.
 
+To resume a conversation across separate commands, provide a SQLite checkpoint
+database and reuse the same thread ID:
+
+```bash
+uv run --offline --no-sync deep-agent-learning \
+  --checkpoint-db .deep-agent/checkpoints.sqlite \
+  --thread-id tax-session \
+  "Explain property tax in one sentence."
+
+uv run --offline --no-sync deep-agent-learning \
+  --checkpoint-db .deep-agent/checkpoints.sqlite \
+  --thread-id tax-session \
+  "Which tax topic did we discuss?"
+```
+
+Checkpoint databases contain conversation and graph state. The local
+`.deep-agent/` directory is ignored by Git and should not contain credentials.
+
 ## Step 6: Observe the reasoning loop
 
 Read the returned message history or connect LangSmith tracing to see this sequence:
@@ -204,5 +222,5 @@ After the first live run, make one change at a time:
 1. [Add `property tax` to `TAX_CATALOG` and test the extension](docs/series/02-extend-the-tax-tool/README.md).
 2. [Add a second specialist for jurisdiction research](docs/series/03-add-a-jurisdiction-specialist/README.md).
 3. [Add a filesystem backend and write a briefing artifact](docs/series/04-write-a-briefing-artifact/README.md).
-4. Add a checkpointer so a conversation can resume across turns.
+4. [Add SQLite checkpointing and resume a conversation](docs/series/05-resume-with-checkpointing/README.md).
 5. Enable LangSmith tracing and inspect the parent and subagent runs.
