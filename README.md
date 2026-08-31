@@ -182,7 +182,7 @@ uv run --offline --no-sync ruff check .
 
 After the first live run, make one change at a time:
 
-1. Add `property tax` to `TAX_CATALOG` and its test.
+1. [Add `property tax` to `TAX_CATALOG` and test the extension](docs/series/02-extend-the-tax-tool/README.md).
 2. Add a second specialist for jurisdiction research.
 3. Add a filesystem backend and ask the agent to write a briefing file.
 4. Add a checkpointer so a conversation can resume across turns.

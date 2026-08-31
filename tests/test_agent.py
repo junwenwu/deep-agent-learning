@@ -22,11 +22,19 @@ def test_lookup_tax_topic_is_case_insensitive() -> None:
     assert "buyer" in result
 
 
+def test_lookup_property_tax_is_case_insensitive() -> None:
+    result = lookup_tax_topic("  PROPERTY Tax ")
+
+    assert "owner" in result
+    assert "local tax authority" in result
+
+
 def test_lookup_tax_topic_lists_known_topics_for_unknown_value() -> None:
-    result = lookup_tax_topic("property tax")
+    result = lookup_tax_topic("estate tax")
 
     assert "No exact match" in result
     assert "income tax" in result
+    assert "property tax" in result
     assert "sales tax" in result
 
 

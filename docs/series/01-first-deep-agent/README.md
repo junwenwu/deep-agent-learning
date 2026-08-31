@@ -177,7 +177,7 @@ You should receive the catalog definition for sales tax. Try an unknown topic to
 
 ```bash
 uv run --offline --no-sync python -c \
-  "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('property tax'))"
+  "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('estate tax'))"
 ```
 
 Instead of inventing an answer, the function reports that there is no exact match
@@ -347,28 +347,20 @@ uv run --offline --no-sync pytest
 uv run --offline --no-sync ruff check .
 ```
 
-The current suite contains eight tests. They verify the tool, inspection output,
-Azure defaults, environment overrides, model pass-through behavior, and the public
-OpenAI missing-key error. The tests do not make paid model calls.
+The current suite contains nine tests. They verify the tool, inspection output,
+dotenv loading, environment overrides, model pass-through behavior, and the
+public OpenAI missing-key error. The tests do not make paid model calls.
 
 Read [`test_agent.py`](../../../tests/test_agent.py) after the implementation. The
 tests provide a compact statement of the behavior that should remain stable while
 you experiment.
 
-## Your first extension
+## Continue to the first extension
 
-Add `property tax` as the first hands-on exercise:
-
-1. Add a `property tax` entry to `TAX_CATALOG` in `tools.py`.
-2. Change the unknown-topic test so it uses a different unsupported topic.
-3. Add a test that looks up `property tax` with mixed capitalization.
-4. Rebuild with `uv sync --no-editable` so the wheel contains your changes.
-5. Run `pytest` and `ruff` until both pass.
-6. Ask the live agent to compare property tax with income tax.
-
-This exercise changes the data available to the specialist without changing the
-orchestration. It reinforces the boundary between domain capability and agent
-control flow.
+[Part 2](../02-extend-the-tax-tool/README.md) adds `property tax` to the local
+catalog with a focused test. The extension changes the data available to the
+specialist without changing the orchestration, reinforcing the boundary between
+domain capability and agent control flow.
 
 ## What we learned
 
@@ -386,7 +378,8 @@ having to replace this core mental model.
 The planned progression builds on this repository:
 
 1. Build and trace the first coordinator, subagent, and tool (this article).
-2. Add a second specialist and learn delegation boundaries.
-3. Give the agent a filesystem workspace and produce briefing artifacts.
-4. Add checkpointing so work can pause and resume.
-5. Add tracing and evaluate coordinator and subagent behavior.
+2. [Extend the tax tool with property tax](../02-extend-the-tax-tool/README.md).
+3. Add a second specialist and learn delegation boundaries.
+4. Give the agent a filesystem workspace and produce briefing artifacts.
+5. Add checkpointing so work can pause and resume.
+6. Add tracing and evaluate coordinator and subagent behavior.

@@ -7,6 +7,10 @@ TAX_CATALOG = {
         "Income tax is generally assessed on income earned by individuals or entities. "
         "Collection commonly happens through withholding, estimated payments, and returns."
     ),
+    "property tax": (
+        "Property tax is generally assessed on the value of owned real estate or other "
+        "property. The owner commonly pays it to a local tax authority on a recurring basis."
+    ),
     "sales tax": (
         "Sales tax is generally assessed on taxable sales of goods or services. "
         "A seller commonly collects it from the buyer and remits it to a tax authority."
