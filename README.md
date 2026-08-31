@@ -115,17 +115,17 @@ az account set --subscription "<subscription-name-or-id>"
 ```
 
 Your identity needs the `Cognitive Services OpenAI User` role on the Azure OpenAI
-resource. Configure the resource endpoint, model deployment name, and supported
-API version in the current shell:
+resource. Create your local configuration from the tracked example:
 
 ```bash
-export AZURE_OPENAI_ENDPOINT="https://<resource-name>.openai.azure.com/"
-export AZURE_OPENAI_CHAT_DEPLOYMENT="<deployment-name>"
-export AZURE_OPENAI_API_VERSION="2024-10-21"
+cp .env.example .env
 ```
 
-These values are configuration, not secrets. Install dependencies and run the
-agent:
+Edit `.env` with your resource endpoint and deployment name. The application
+loads this file automatically, while values exported in your shell take
+precedence. The real `.env` remains local and must not be committed.
+
+Install dependencies and run the agent:
 
 ```bash
 uv sync --no-editable

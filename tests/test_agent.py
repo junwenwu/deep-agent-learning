@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 
 from deep_agent_learning import (
-    DEFAULT_AZURE_ENVIRONMENT,
     EXIT_ERROR,
+    REQUIRED_AZURE_ENVIRONMENT,
     configure_azure_environment,
     describe_agent,
     lookup_tax_topic,
@@ -54,20 +54,28 @@ def test_main_explains_missing_openai_key(monkeypatch, capsys) -> None:
     assert "OPENAI_API_KEY is not set" in capsys.readouterr().err
 
 
-def test_configure_azure_environment_sets_defaults(monkeypatch) -> None:
-    for variable in DEFAULT_AZURE_ENVIRONMENT:
+def test_configure_azure_environment_loads_dotenv(monkeypatch, tmp_path) -> None:
+    dotenv_path = tmp_path / ".env"
+    dotenv_path.write_text(
+        "AZURE_OPENAI_ENDPOINT=https://example.openai.azure.com/\n"
+        "AZURE_OPENAI_CHAT_DEPLOYMENT=example-deployment\n"
+        "AZURE_OPENAI_API_VERSION=2024-10-21\n",
+        encoding="utf-8",
+    )
+    for variable in REQUIRED_AZURE_ENVIRONMENT:
         monkeypatch.delenv(variable, raising=False)
 
-    configure_azure_environment()
+    configure_azure_environment(dotenv_path)
 
-    for variable, value in DEFAULT_AZURE_ENVIRONMENT.items():
-        assert os.environ[variable] == value
+    assert os.environ["AZURE_OPENAI_ENDPOINT"] == "https://example.openai.azure.com/"
+    assert os.environ["AZURE_OPENAI_CHAT_DEPLOYMENT"] == "example-deployment"
+    assert os.environ["AZURE_OPENAI_API_VERSION"] == "2024-10-21"
 
 
 def test_configure_azure_environment_preserves_overrides(monkeypatch) -> None:
     monkeypatch.setenv("AZURE_OPENAI_ENDPOINT", "https://example.openai.azure.com/")
 
-    configure_azure_environment()
+    configure_azure_environment("missing.env")
 
     assert os.environ["AZURE_OPENAI_ENDPOINT"] == "https://example.openai.azure.com/"
 

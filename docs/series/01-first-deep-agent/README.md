@@ -240,19 +240,26 @@ makes the first example easier to trace than a loosely prompted general agent.
 ## Step 7: Understand keyless Azure authentication
 
 Open [`models.py`](../../../src/deep_agent_learning/models.py). The application
-defines non-secret defaults for the existing learning deployment:
+loads Azure configuration from a local `.env` file without overriding values
+already exported in your shell:
 
 ```python
-DEFAULT_AZURE_ENVIRONMENT = {
-    "AZURE_OPENAI_ENDPOINT":
-        "https://deepagent-learning.cognitiveservices.azure.com/",
-    "AZURE_OPENAI_CHAT_DEPLOYMENT": "DeepAgent_Learning",
-    "AZURE_OPENAI_API_VERSION": "2024-10-21",
-}
+def configure_azure_environment(dotenv_path: str | Path | None = None) -> None:
+  """Load Azure configuration from a dotenv file without replacing shell values."""
+  load_dotenv(dotenv_path=dotenv_path, override=False)
 ```
 
-These values identify a service; they are not credentials. The function uses
-`DefaultAzureCredential` and a bearer-token provider for this scope:
+Create the local file from the tracked template, then replace its placeholders
+with your Azure resource endpoint and deployment name:
+
+```bash
+cp .env.example .env
+```
+
+The `.env` file identifies a service; it does not contain an API key. It remains
+local because Git ignores it, while `.env.example` documents the required keys.
+The function uses `DefaultAzureCredential` and a bearer-token provider for this
+scope:
 
 ```text
 https://cognitiveservices.azure.com/.default
@@ -277,9 +284,9 @@ az account set --subscription "<subscription-name-or-id>"
 > `deepagent-learning` Azure AI resource. The application does not need
 > `AZURE_OPENAI_API_KEY`.
 
-Shell environment variables can override the defaults because
-`configure_azure_environment` uses `os.environ.setdefault`. This keeps the example
-ready to run while allowing the same code to target another compatible deployment.
+Shell environment variables take precedence because `load_dotenv` is called with
+`override=False`. This allows automation and hosted environments to supply the
+same configuration without changing the local file.
 
 ## Step 8: Run the first live request
 

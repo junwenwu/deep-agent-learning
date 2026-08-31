@@ -3,23 +3,25 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
+
+from dotenv import load_dotenv
 
 AZURE_MODEL = "azure-openai"
 DEFAULT_MODEL = AZURE_MODEL
 AZURE_DEPLOYMENT_MODEL = "gpt-5-mini"
 AZURE_DEPLOYMENT_MODEL_VERSION = "2025-08-07"
-DEFAULT_AZURE_ENVIRONMENT = {
-    "AZURE_OPENAI_ENDPOINT": "https://deepagent-learning.cognitiveservices.azure.com/",
-    "AZURE_OPENAI_CHAT_DEPLOYMENT": "DeepAgent_Learning",
-    "AZURE_OPENAI_API_VERSION": "2024-10-21",
-}
+REQUIRED_AZURE_ENVIRONMENT = (
+    "AZURE_OPENAI_ENDPOINT",
+    "AZURE_OPENAI_CHAT_DEPLOYMENT",
+    "AZURE_OPENAI_API_VERSION",
+)
 
 
-def configure_azure_environment() -> None:
-    """Set non-secret Azure defaults without replacing shell configuration."""
-    for name, value in DEFAULT_AZURE_ENVIRONMENT.items():
-        os.environ.setdefault(name, value)
+def configure_azure_environment(dotenv_path: str | Path | None = None) -> None:
+    """Load Azure configuration from a dotenv file without replacing shell values."""
+    load_dotenv(dotenv_path=dotenv_path, override=False)
 
 
 def resolve_model(model: str) -> Any:
@@ -38,12 +40,9 @@ def resolve_model(model: str) -> Any:
         return model
 
     configure_azure_environment()
-    required_variables = (
-        "AZURE_OPENAI_ENDPOINT",
-        "AZURE_OPENAI_CHAT_DEPLOYMENT",
-        "AZURE_OPENAI_API_VERSION",
-    )
-    missing_variables = [name for name in required_variables if not os.environ.get(name)]
+    missing_variables = [
+        name for name in REQUIRED_AZURE_ENVIRONMENT if not os.environ.get(name)
+    ]
     if missing_variables:
         missing = ", ".join(missing_variables)
         raise ValueError(f"Missing Azure OpenAI environment variables: {missing}")

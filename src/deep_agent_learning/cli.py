@@ -11,8 +11,8 @@ from deep_agent_learning.models import (
     AZURE_DEPLOYMENT_MODEL,
     AZURE_DEPLOYMENT_MODEL_VERSION,
     AZURE_MODEL,
-    DEFAULT_AZURE_ENVIRONMENT,
     DEFAULT_MODEL,
+    configure_azure_environment,
 )
 
 EXIT_SUCCESS = 0
@@ -43,9 +43,13 @@ def describe_agent(model: str) -> str:
     """Return a no-credentials view of the example's control flow."""
     description = [f"Model: {model}"]
     if model == AZURE_MODEL:
+        configure_azure_environment()
+        deployment = os.environ.get(
+            "AZURE_OPENAI_CHAT_DEPLOYMENT", "<not configured>"
+        )
         description.extend(
             [
-                f"Azure deployment: {DEFAULT_AZURE_ENVIRONMENT['AZURE_OPENAI_CHAT_DEPLOYMENT']}",
+                f"Azure deployment: {deployment}",
                 f"Underlying model: {AZURE_DEPLOYMENT_MODEL} ({AZURE_DEPLOYMENT_MODEL_VERSION})",
             ]
         )
