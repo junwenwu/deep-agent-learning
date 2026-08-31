@@ -317,15 +317,16 @@ tool.
 
 ## Next in the series
 
-Part 4 will give the agent a filesystem workspace and ask it to produce a briefing
-artifact. That experiment will move results beyond the final chat message while
-preserving the two-specialist team built here.
+[Part 4](../04-write-a-briefing-artifact/README.md) gives the agent a confined
+filesystem workspace and asks it to produce a briefing artifact. That experiment
+moves results beyond the final chat message while preserving the two-specialist
+team built here.
 
 ## Series roadmap
 
 1. [Build and trace the first coordinator, subagent, and tool](../01-first-deep-agent/README.md).
 2. [Extend the tax tool with property tax](../02-extend-the-tax-tool/README.md).
 3. Add a jurisdiction specialist and learn delegation boundaries (this article).
-4. Give the agent a filesystem workspace and produce briefing artifacts.
+4. [Give the agent a filesystem workspace and produce a briefing artifact](../04-write-a-briefing-artifact/README.md).
 5. Add checkpointing so work can pause and resume.
 6. Add tracing and evaluate coordinator and subagent behavior.

@@ -2,24 +2,32 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from deep_agent_learning.models import resolve_model
 from deep_agent_learning.tools import lookup_tax_jurisdiction, lookup_tax_topic
 
 
-def create_agent(model_name: str) -> Any:
+def create_agent(model_name: str, workspace: Path | None = None) -> Any:
     """Build the coordinator and its specialist research team.
 
     Args:
         model_name: ``azure-openai`` or a LangChain ``provider:model`` identifier.
+        workspace: Optional local directory exposed as the agent's virtual filesystem root.
 
     Returns:
         A compiled LangGraph agent.
     """
     from deepagents import create_deep_agent
+    from deepagents.backends import FilesystemBackend
 
     model = resolve_model(model_name)
+    backend = (
+        FilesystemBackend(root_dir=workspace, virtual_mode=True)
+        if workspace is not None
+        else None
+    )
     tax_researcher = {
         "name": "tax-researcher",
         "description": (
@@ -61,4 +69,5 @@ def create_agent(model_name: str) -> Any:
             "by jurisdiction."
         ),
         subagents=[tax_researcher, jurisdiction_researcher],
+        backend=backend,
     )

@@ -380,6 +380,6 @@ The planned progression builds on this repository:
 1. Build and trace the first coordinator, subagent, and tool (this article).
 2. [Extend the tax tool with property tax](../02-extend-the-tax-tool/README.md).
 3. [Add a jurisdiction specialist and learn delegation boundaries](../03-add-a-jurisdiction-specialist/README.md).
-4. Give the agent a filesystem workspace and produce briefing artifacts.
+4. [Give the agent a filesystem workspace and produce a briefing artifact](../04-write-a-briefing-artifact/README.md).
 5. Add checkpointing so work can pause and resume.
 6. Add tracing and evaluate coordinator and subagent behavior.

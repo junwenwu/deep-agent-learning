@@ -223,6 +223,6 @@ which part of a request?
 1. [Build and trace the first coordinator, subagent, and tool](../01-first-deep-agent/README.md).
 2. Extend the tax tool with property tax (this article).
 3. [Add a jurisdiction specialist and learn delegation boundaries](../03-add-a-jurisdiction-specialist/README.md).
-4. Give the agent a filesystem workspace and produce briefing artifacts.
+4. [Give the agent a filesystem workspace and produce a briefing artifact](../04-write-a-briefing-artifact/README.md).
 5. Add checkpointing so work can pause and resume.
 6. Add tracing and evaluate coordinator and subagent behavior.

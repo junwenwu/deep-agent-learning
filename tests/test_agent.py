@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import os
+from types import SimpleNamespace
 from typing import Any
 
 from deep_agent_learning import (
+    ARTIFACT_NAME,
     EXIT_ERROR,
+    EXIT_FAILURE,
+    EXIT_SUCCESS,
     REQUIRED_AZURE_ENVIRONMENT,
     configure_azure_environment,
     create_agent,
@@ -64,7 +68,9 @@ def test_describe_agent_shows_delegation_path() -> None:
     assert "lookup_tax_jurisdiction(jurisdiction)" in result
 
 
-def test_create_agent_registers_specialists_with_distinct_tools(monkeypatch) -> None:
+def test_create_agent_registers_specialists_with_distinct_tools(
+    monkeypatch, tmp_path
+) -> None:
     captured: dict[str, Any] = {}
 
     def capture_agent(**kwargs: Any) -> str:
@@ -74,7 +80,7 @@ def test_create_agent_registers_specialists_with_distinct_tools(monkeypatch) -> 
     monkeypatch.setattr("deep_agent_learning.agent.resolve_model", lambda model: model)
     monkeypatch.setattr("deepagents.create_deep_agent", capture_agent)
 
-    assert create_agent("openai:test-model") == "compiled-agent"
+    assert create_agent("openai:test-model", workspace=tmp_path) == "compiled-agent"
     subagents = captured["subagents"]
     assert [subagent["name"] for subagent in subagents] == [
         "tax-researcher",
@@ -86,6 +92,81 @@ def test_create_agent_registers_specialists_with_distinct_tools(monkeypatch) -> 
     assert "Return only facts present in the tool output" in subagents[1]["system_prompt"]
     assert "Use both specialists" in captured["system_prompt"]
     assert "using only facts returned by the specialists" in captured["system_prompt"]
+    backend = captured["backend"]
+    assert type(backend).__name__ == "FilesystemBackend"
+    assert backend.cwd == tmp_path.resolve()
+    assert backend.virtual_mode is True
+
+
+def test_describe_agent_shows_artifact_workspace(tmp_path) -> None:
+    result = describe_agent("openai:test-model", tmp_path)
+
+    assert f"Artifact workspace: {tmp_path.resolve()}" in result
+    assert f"write_file('/{ARTIFACT_NAME}')" in result
+
+
+def test_main_requests_and_reports_artifact(monkeypatch, tmp_path, capsys) -> None:
+    captured: dict[str, Any] = {}
+
+    class ArtifactAgent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            captured["payload"] = payload
+            (tmp_path / ARTIFACT_NAME).write_text("# Briefing\n", encoding="utf-8")
+            return {"messages": [SimpleNamespace(content="Briefing complete.")]}
+
+    def create_artifact_agent(model_name: str, workspace=None) -> ArtifactAgent:
+        captured["model_name"] = model_name
+        captured["workspace"] = workspace
+        return ArtifactAgent()
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr("deep_agent_learning.cli.create_agent", create_artifact_agent)
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "Create a tax briefing.",
+            "--model",
+            "openai:test-model",
+            "--workspace",
+            str(tmp_path),
+        ],
+    )
+
+    assert main() == EXIT_SUCCESS
+    assert captured["workspace"] == tmp_path
+    assert f"write_file to save the same briefing as Markdown at /{ARTIFACT_NAME}" in (
+        captured["payload"]["messages"][0]["content"]
+    )
+    assert f"Artifact: {(tmp_path / ARTIFACT_NAME).resolve()}" in capsys.readouterr().out
+
+
+def test_main_fails_when_requested_artifact_is_missing(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    class NoArtifactAgent:
+        def invoke(self, payload: dict[str, Any]) -> dict[str, Any]:
+            return {"messages": [SimpleNamespace(content="No artifact created.")]}
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(
+        "deep_agent_learning.cli.create_agent",
+        lambda model_name, workspace=None: NoArtifactAgent(),
+    )
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "deep-agent-learning",
+            "Create a tax briefing.",
+            "--model",
+            "openai:test-model",
+            "--workspace",
+            str(tmp_path),
+        ],
+    )
+
+    assert main() == EXIT_FAILURE
+    assert "Expected artifact was not created" in capsys.readouterr().err
 
 
 def test_describe_agent_shows_underlying_azure_model() -> None:

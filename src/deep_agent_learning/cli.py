@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+from pathlib import Path
 
 from deep_agent_learning.agent import create_agent
 from deep_agent_learning.models import (
@@ -16,7 +17,9 @@ from deep_agent_learning.models import (
 )
 
 EXIT_SUCCESS = 0
+EXIT_FAILURE = 1
 EXIT_ERROR = 2
+ARTIFACT_NAME = "briefing.md"
 DEFAULT_QUESTION = (
     "Compare sales tax and income tax. Explain who pays each and when it is collected."
 )
@@ -36,10 +39,15 @@ def create_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Show the agent structure without calling a model.",
     )
+    parser.add_argument(
+        "--workspace",
+        type=Path,
+        help="Persist a Markdown briefing in this local artifact directory.",
+    )
     return parser
 
 
-def describe_agent(model: str) -> str:
+def describe_agent(model: str, workspace: Path | None = None) -> str:
     """Return a no-credentials view of the example's control flow."""
     description = [f"Model: {model}"]
     if model == AZURE_MODEL:
@@ -66,6 +74,13 @@ def describe_agent(model: str) -> str:
             "Result: returns to the coordinator for the final answer",
         ]
     )
+    if workspace is not None:
+        description.extend(
+            [
+                f"Artifact workspace: {workspace.resolve()}",
+                f"  -> write_file('/{ARTIFACT_NAME}')",
+            ]
+        )
     return "\n".join(description)
 
 
@@ -73,7 +88,7 @@ def main() -> int:
     """Run inspection mode or invoke the live agent."""
     args = create_parser().parse_args()
     if args.inspect:
-        print(describe_agent(args.model))
+        print(describe_agent(args.model, args.workspace))
         return EXIT_SUCCESS
 
     if not os.environ.get("OPENAI_API_KEY") and args.model.startswith("openai:"):
@@ -84,10 +99,22 @@ def main() -> int:
         return EXIT_ERROR
 
     try:
-        agent = create_agent(args.model)
+        agent = create_agent(args.model, workspace=args.workspace)
     except ValueError as error:
         print(error, file=sys.stderr)
         return EXIT_ERROR
-    result = agent.invoke({"messages": [{"role": "user", "content": args.question}]})
+    question = args.question
+    if args.workspace is not None:
+        question += (
+            f"\n\nAfter synthesizing the answer, use write_file to save the same briefing "
+            f"as Markdown at /{ARTIFACT_NAME}."
+        )
+    result = agent.invoke({"messages": [{"role": "user", "content": question}]})
     print(result["messages"][-1].content)
+    if args.workspace is not None:
+        artifact_path = args.workspace / ARTIFACT_NAME
+        if not artifact_path.is_file():
+            print(f"Expected artifact was not created: {artifact_path}", file=sys.stderr)
+            return EXIT_FAILURE
+        print(f"Artifact: {artifact_path.resolve()}")
     return EXIT_SUCCESS

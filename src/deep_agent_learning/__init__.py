@@ -2,8 +2,10 @@
 
 from deep_agent_learning.agent import create_agent
 from deep_agent_learning.cli import (
+    ARTIFACT_NAME,
     DEFAULT_QUESTION,
     EXIT_ERROR,
+    EXIT_FAILURE,
     EXIT_SUCCESS,
     create_parser,
     describe_agent,
@@ -26,12 +28,14 @@ from deep_agent_learning.tools import (
 )
 
 __all__ = [
+    "ARTIFACT_NAME",
     "AZURE_DEPLOYMENT_MODEL",
     "AZURE_DEPLOYMENT_MODEL_VERSION",
     "AZURE_MODEL",
     "DEFAULT_MODEL",
     "DEFAULT_QUESTION",
     "EXIT_ERROR",
+    "EXIT_FAILURE",
     "EXIT_SUCCESS",
     "JURISDICTION_CATALOG",
     "REQUIRED_AZURE_ENVIRONMENT",

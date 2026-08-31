@@ -1,6 +1,6 @@
 ---
 title: Learn Deep Agents with a Tax Briefing Agent
-description: A small LangChain Deep Agents example with custom tools and specialist subagents
+description: A small LangChain Deep Agents example with specialist subagents and persistent artifacts
 ms.date: 2026-08-31
 ms.topic: tutorial
 ---
@@ -11,17 +11,18 @@ This project builds an educational tax briefing agent with
 [LangChain Deep Agents](https://github.com/langchain-ai/deepagents). It is small
 enough to trace from the user request to the final answer.
 
-The example has five moving parts:
+The example has six moving parts:
 
 1. A coordinator receives the question and plans the work.
 2. The built-in `task` tool delegates tax concepts to `tax-researcher`.
 3. The tax specialist calls `lookup_tax_topic` in its isolated context.
 4. A `jurisdiction-researcher` handles federal, state, and local scope questions.
 5. The results return to the coordinator, which writes the final briefing.
+6. An optional filesystem backend persists the briefing in an isolated artifact directory.
 
-Deep Agents also installs filesystem, context-management, and general-purpose
-subagent capabilities by default. This lesson focuses on custom tools and explicit
-delegation before introducing those features.
+Deep Agents installs filesystem, context-management, and general-purpose subagent
+capabilities by default. The `--workspace` option connects those filesystem tools
+to a confined host directory so generated briefings survive after the run.
 
 ## Prerequisites
 
@@ -160,6 +161,19 @@ uv run --offline --no-sync deep-agent-learning \
 To use the public OpenAI service instead, set `OPENAI_API_KEY` and pass a
 `provider:model` identifier with `--model`.
 
+To persist the final answer as `artifacts/briefing.md`, provide an artifact
+workspace:
+
+```bash
+uv run --offline --no-sync deep-agent-learning \
+  --workspace artifacts \
+  "Create a concise briefing about property tax and local jurisdiction."
+```
+
+The agent sees the virtual path `/briefing.md`, while `FilesystemBackend` maps it
+under the selected host directory. The generated `artifacts/` directory is
+ignored by Git.
+
 ## Step 6: Observe the reasoning loop
 
 Read the returned message history or connect LangSmith tracing to see this sequence:
@@ -189,6 +203,6 @@ After the first live run, make one change at a time:
 
 1. [Add `property tax` to `TAX_CATALOG` and test the extension](docs/series/02-extend-the-tax-tool/README.md).
 2. [Add a second specialist for jurisdiction research](docs/series/03-add-a-jurisdiction-specialist/README.md).
-3. Add a filesystem backend and ask the agent to write a briefing file.
+3. [Add a filesystem backend and write a briefing artifact](docs/series/04-write-a-briefing-artifact/README.md).
 4. Add a checkpointer so a conversation can resume across turns.
 5. Enable LangSmith tracing and inspect the parent and subagent runs.
