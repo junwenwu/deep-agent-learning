@@ -121,9 +121,19 @@ resource. Create your local configuration from the tracked example:
 cp .env.example .env
 ```
 
-Edit `.env` with your resource endpoint and deployment name. The application
-loads this file automatically, while values exported in your shell take
-precedence. The real `.env` remains local and must not be committed.
+Open `.env` and replace `<resource-name>` and `<deployment-name>` with the actual
+values from your Azure OpenAI resource:
+
+```dotenv
+AZURE_OPENAI_ENDPOINT="https://<resource-name>.openai.azure.com/"
+AZURE_OPENAI_CHAT_DEPLOYMENT="<deployment-name>"
+AZURE_OPENAI_API_VERSION="2024-10-21"
+```
+
+These settings identify the Azure resource and model deployment; they are not
+credentials. Authentication still comes from `az login`. The application loads
+`.env` automatically, while values exported in your shell take precedence. The
+real `.env` remains local and must not be committed.
 
 Install dependencies and run the agent:
 
