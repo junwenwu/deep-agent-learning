@@ -213,15 +213,16 @@ package separates environment state from application behavior.
 
 ## Next in the series
 
-Part 3 will add a second specialist for jurisdiction research. That change moves
-beyond domain data and introduces a real delegation choice for the coordinator:
-which specialist should receive which part of a request?
+[Part 3](../03-add-a-jurisdiction-specialist/README.md) adds a second specialist
+for jurisdiction research. That change moves beyond domain data and introduces a
+real delegation choice for the coordinator: which specialist should receive
+which part of a request?
 
 ## Series roadmap
 
 1. [Build and trace the first coordinator, subagent, and tool](../01-first-deep-agent/README.md).
 2. Extend the tax tool with property tax (this article).
-3. Add a second specialist and learn delegation boundaries.
+3. [Add a jurisdiction specialist and learn delegation boundaries](../03-add-a-jurisdiction-specialist/README.md).
 4. Give the agent a filesystem workspace and produce briefing artifacts.
 5. Add checkpointing so work can pause and resume.
 6. Add tracing and evaluate coordinator and subagent behavior.

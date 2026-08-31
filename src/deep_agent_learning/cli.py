@@ -57,8 +57,12 @@ def describe_agent(model: str) -> str:
         [
             "Coordinator: plans and synthesizes the briefing",
             "  -> task(subagent_type='tax-researcher')",
-            "Subagent: researches in an isolated context",
+            "Tax researcher: researches concepts in an isolated context",
             "  -> lookup_tax_topic(topic)",
+            "Coordinator: routes jurisdiction research",
+            "  -> task(subagent_type='jurisdiction-researcher')",
+            "Jurisdiction researcher: researches where rules apply",
+            "  -> lookup_tax_jurisdiction(jurisdiction)",
             "Result: returns to the coordinator for the final answer",
         ]
     )

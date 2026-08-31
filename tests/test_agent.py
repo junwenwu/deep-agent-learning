@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import os
+from typing import Any
 
 from deep_agent_learning import (
     EXIT_ERROR,
     REQUIRED_AZURE_ENVIRONMENT,
     configure_azure_environment,
+    create_agent,
     describe_agent,
+    lookup_tax_jurisdiction,
     lookup_tax_topic,
     main,
     resolve_model,
@@ -38,11 +41,51 @@ def test_lookup_tax_topic_lists_known_topics_for_unknown_value() -> None:
     assert "sales tax" in result
 
 
+def test_lookup_tax_jurisdiction_is_case_insensitive() -> None:
+    result = lookup_tax_jurisdiction("  STATE ")
+
+    assert "within one state" in result
+    assert "local taxes" in result
+
+
+def test_lookup_tax_jurisdiction_lists_known_levels() -> None:
+    result = lookup_tax_jurisdiction("international")
+
+    assert "No exact match" in result
+    assert "federal, local, state" in result
+
+
 def test_describe_agent_shows_delegation_path() -> None:
     result = describe_agent("openai:test-model")
 
     assert "task(subagent_type='tax-researcher')" in result
     assert "lookup_tax_topic(topic)" in result
+    assert "task(subagent_type='jurisdiction-researcher')" in result
+    assert "lookup_tax_jurisdiction(jurisdiction)" in result
+
+
+def test_create_agent_registers_specialists_with_distinct_tools(monkeypatch) -> None:
+    captured: dict[str, Any] = {}
+
+    def capture_agent(**kwargs: Any) -> str:
+        captured.update(kwargs)
+        return "compiled-agent"
+
+    monkeypatch.setattr("deep_agent_learning.agent.resolve_model", lambda model: model)
+    monkeypatch.setattr("deepagents.create_deep_agent", capture_agent)
+
+    assert create_agent("openai:test-model") == "compiled-agent"
+    subagents = captured["subagents"]
+    assert [subagent["name"] for subagent in subagents] == [
+        "tax-researcher",
+        "jurisdiction-researcher",
+    ]
+    assert subagents[0]["tools"] == [lookup_tax_topic]
+    assert subagents[1]["tools"] == [lookup_tax_jurisdiction]
+    assert "Return only facts present in the tool output" in subagents[0]["system_prompt"]
+    assert "Return only facts present in the tool output" in subagents[1]["system_prompt"]
+    assert "Use both specialists" in captured["system_prompt"]
+    assert "using only facts returned by the specialists" in captured["system_prompt"]
 
 
 def test_describe_agent_shows_underlying_azure_model() -> None:

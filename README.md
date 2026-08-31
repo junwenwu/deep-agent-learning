@@ -1,6 +1,6 @@
 ---
 title: Learn Deep Agents with a Tax Briefing Agent
-description: A small LangChain Deep Agents example with a custom tool and specialist subagent
+description: A small LangChain Deep Agents example with custom tools and specialist subagents
 ms.date: 2026-08-31
 ms.topic: tutorial
 ---
@@ -11,12 +11,13 @@ This project builds an educational tax briefing agent with
 [LangChain Deep Agents](https://github.com/langchain-ai/deepagents). It is small
 enough to trace from the user request to the final answer.
 
-The example has four moving parts:
+The example has five moving parts:
 
 1. A coordinator receives the question and plans the work.
-2. The built-in `task` tool delegates research to `tax-researcher`.
-3. The subagent calls `lookup_tax_topic` in its isolated context.
-4. The result returns to the coordinator, which writes the final briefing.
+2. The built-in `task` tool delegates tax concepts to `tax-researcher`.
+3. The tax specialist calls `lookup_tax_topic` in its isolated context.
+4. A `jurisdiction-researcher` handles federal, state, and local scope questions.
+5. The results return to the coordinator, which writes the final briefing.
 
 Deep Agents also installs filesystem, context-management, and general-purpose
 subagent capabilities by default. This lesson focuses on custom tools and explicit
@@ -50,6 +51,10 @@ Coordinator
   -> task(subagent_type='tax-researcher')
 Tax researcher
   -> lookup_tax_topic(topic)
+Coordinator
+  -> task(subagent_type='jurisdiction-researcher')
+Jurisdiction researcher
+  -> lookup_tax_jurisdiction(jurisdiction)
 Coordinator
   -> final answer
 ```
@@ -183,7 +188,7 @@ uv run --offline --no-sync ruff check .
 After the first live run, make one change at a time:
 
 1. [Add `property tax` to `TAX_CATALOG` and test the extension](docs/series/02-extend-the-tax-tool/README.md).
-2. Add a second specialist for jurisdiction research.
+2. [Add a second specialist for jurisdiction research](docs/series/03-add-a-jurisdiction-specialist/README.md).
 3. Add a filesystem backend and ask the agent to write a briefing file.
 4. Add a checkpointer so a conversation can resume across turns.
 5. Enable LangSmith tracing and inspect the parent and subagent runs.
