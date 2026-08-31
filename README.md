@@ -22,12 +22,25 @@ Deep Agents also installs filesystem, context-management, and general-purpose
 subagent capabilities by default. This lesson focuses on custom tools and explicit
 delegation before introducing those features.
 
+## Prerequisites
+
+Install these tools before starting:
+
+* Python 3.11 or later
+* [uv](https://docs.astral.sh/uv/getting-started/installation/)
+* [Azure CLI](https://learn.microsoft.com/cli/azure/install-azure-cli) for the
+  live Azure OpenAI example
+
+The committed lock file uses the Tsinghua PyPI mirror because the standard PyPI
+file host was unavailable in the environment where this example was built.
+
 ## Step 1: Inspect the graph
 
 Inspection mode needs no API key and makes no model call:
 
 ```bash
-uv run python -m deep_agent_learning --inspect
+uv sync --no-editable
+uv run --offline --no-sync python -m deep_agent_learning --inspect
 ```
 
 Expected flow:
@@ -41,10 +54,9 @@ Coordinator
   -> final answer
 ```
 
-Open
-[src/deep_agent_learning/__init__.py](src/deep_agent_learning/__init__.py) and
-find `create_agent`. `create_deep_agent` returns a compiled LangGraph graph rather
-than immediately calling a model.
+Open [src/deep_agent_learning/agent.py](src/deep_agent_learning/agent.py) and find
+`create_agent`. Its call to `create_deep_agent` constructs and returns a compiled
+LangGraph graph rather than invoking the model immediately.
 
 ## Step 2: Understand the tool
 
@@ -55,7 +67,7 @@ signature, and docstring to decide when and how to call it.
 Try the tool without an LLM:
 
 ```bash
-uv run python -c "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('sales tax'))"
+uv run --offline --no-sync python -c "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('sales tax'))"
 ```
 
 Keeping the first tool deterministic makes the agent trace easier to understand
@@ -116,8 +128,8 @@ These values are configuration, not secrets. Install dependencies and run the
 agent:
 
 ```bash
-uv sync
-uv run deep-agent-learning
+uv sync --no-editable
+uv run --offline --no-sync deep-agent-learning
 ```
 
 No `AZURE_OPENAI_API_KEY` is needed. In Azure-hosted environments, the same code
@@ -126,7 +138,8 @@ compares sales tax and income tax. You can pass another question as a positional
 argument:
 
 ```bash
-uv run deep-agent-learning "Explain income tax and identify when it is collected"
+uv run --offline --no-sync deep-agent-learning \
+  "Explain income tax and identify when it is collected"
 ```
 
 To use the public OpenAI service instead, set `OPENAI_API_KEY` and pass a
@@ -151,8 +164,8 @@ filesystem access, and subagent delegation assembled around a LangGraph loop.
 Run the offline checks before making paid model calls:
 
 ```bash
-uv run pytest
-uv run ruff check .
+uv run --offline --no-sync pytest
+uv run --offline --no-sync ruff check .
 ```
 
 ## Next experiments
