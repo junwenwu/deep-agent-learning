@@ -63,6 +63,15 @@ def test_read_tax_source_returns_stable_citation_metadata() -> None:
     assert result["url"] == "https://www.tax.ny.gov/bus/ptet/"
 
 
+def test_read_tax_source_returns_recovery_for_unknown_id() -> None:
+    result = json.loads(read_tax_source("ca-pte-elective-tax-2026"))
+
+    assert result["error"] == "unknown_excerpt_id"
+    assert result["requested_excerpt_id"] == "ca-pte-elective-tax-2026"
+    assert "ca-pte-eligibility-2026" in result["available_excerpt_ids"]
+    assert "search_tax_sources" in result["recovery"]
+
+
 def test_search_tax_sources_rejects_invalid_date() -> None:
     try:
         search_tax_sources("PTET", effective_on="August 31, 2026")

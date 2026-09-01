@@ -111,13 +111,23 @@ def read_tax_source(
     Args:
         excerpt_id: Identifier returned by ``search_tax_sources``.
     Returns:
-        JSON containing the excerpt and complete citation metadata.
-
-    Raises:
-        ValueError: If the excerpt identifier is unknown.
+        JSON containing the excerpt and complete citation metadata, or a structured
+        error that directs the caller to search again when the identifier is unknown.
     """
     normalized_id = excerpt_id.strip().lower()
-    for record in _load_corpus():
+    records = _load_corpus()
+    for record in records:
         if record["excerpt_id"].lower() == normalized_id:
             return json.dumps(record, indent=2, sort_keys=True)
-    raise ValueError(f"Unknown tax source excerpt: {excerpt_id}")
+    return json.dumps(
+        {
+            "error": "unknown_excerpt_id",
+            "requested_excerpt_id": excerpt_id,
+            "recovery": (
+                "Call search_tax_sources again and pass an exact excerpt_id from its results."
+            ),
+            "available_excerpt_ids": sorted(record["excerpt_id"] for record in records),
+        },
+        indent=2,
+        sort_keys=True,
+    )
