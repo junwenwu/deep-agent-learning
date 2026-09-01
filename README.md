@@ -228,12 +228,9 @@ uv run --offline --no-sync pytest
 uv run --offline --no-sync ruff check .
 ```
 
-## Next experiments
+## Complete tutorial
 
-After the first live run, make one change at a time:
-
-1. [Add `property tax` to `TAX_CATALOG` and test the extension](docs/series/02-extend-the-tax-tool/README.md).
-2. [Add a second specialist for jurisdiction research](docs/series/03-add-a-jurisdiction-specialist/README.md).
-3. [Add a filesystem backend and write a briefing artifact](docs/series/04-write-a-briefing-artifact/README.md).
-4. [Add SQLite checkpointing and resume a conversation](docs/series/05-resume-with-checkpointing/README.md).
-5. [Trace and evaluate coordinator and specialist behavior](docs/series/06-trace-and-evaluate/README.md).
+Continue with the consolidated blog-style guide,
+[Deep Agents from Scratch](docs/README.md). It builds the example one boundary
+at a time: deterministic tools, specialist routing, filesystem artifacts, SQLite
+checkpoints, LangSmith tracing, evaluation, and migration to another domain.
