@@ -8,7 +8,7 @@ from typing import Any
 from langgraph.checkpoint.base import BaseCheckpointSaver
 
 from deep_agent_learning.models import resolve_model
-from deep_agent_learning.tools import lookup_tax_jurisdiction, lookup_tax_topic
+from deep_agent_learning.research import read_tax_source, search_tax_sources
 
 
 def create_agent(
@@ -38,42 +38,47 @@ def create_agent(
     tax_researcher = {
         "name": "tax-researcher",
         "description": (
-            "Look up and compare tax concepts using the local catalog. "
-            "Delegate here when a request mentions one or more tax topics."
+            "Find authoritative tax guidance and return evidence with citations. "
+            "Delegate here for the substantive tax issue in a research request."
         ),
         "system_prompt": (
-            "You are an educational tax researcher. Use lookup_tax_topic for every topic. "
-            "Return only facts present in the tool output. Do not add facts, calculations, "
-            "examples, or advice from your own knowledge."
+            "You are an educational tax researcher. Use search_tax_sources with the requested "
+            "effective date and jurisdictions, then use read_tax_source for the excerpts you "
+            "rely on. Return a list of claims, and attach the excerpt_id, URL, section, and a "
+            "supporting quote to every claim. If the corpus has insufficient evidence, say so. "
+            "Never rely on your own tax knowledge."
         ),
-        "tools": [lookup_tax_topic],
+        "tools": [search_tax_sources, read_tax_source],
         "model": model,
     }
     jurisdiction_researcher = {
         "name": "jurisdiction-researcher",
         "description": (
-            "Explain federal, state, and local tax jurisdiction levels. Delegate here when a "
-            "request asks where tax rules apply or how jurisdiction levels differ."
+            "Compare authoritative guidance across requested jurisdictions and effective dates. "
+            "Delegate here when a request asks how jurisdiction-specific rules differ."
         ),
         "system_prompt": (
-            "You are an educational tax jurisdiction researcher. Use lookup_tax_jurisdiction "
-            "for every requested jurisdiction level. Return only facts present in the tool "
-            "output. Do not add facts, examples, or advice from your own knowledge."
+            "You are an educational jurisdiction researcher. Search each requested jurisdiction "
+            "separately with search_tax_sources and the requested effective date. Read every "
+            "excerpt used with read_tax_source. Compare only supported claims and attach the "
+            "excerpt_id, URL, section, and supporting quote. Explicitly identify missing or "
+            "non-comparable evidence. Never rely on your own tax knowledge."
         ),
-        "tools": [lookup_tax_jurisdiction],
+        "tools": [search_tax_sources, read_tax_source],
         "model": model,
     }
 
     return create_deep_agent(
         model=model,
         system_prompt=(
-            "You coordinate educational tax briefings. Plan the request and delegate tax-concept "
-            "questions to tax-researcher. Delegate questions about federal, state, or local "
-            "jurisdiction levels to jurisdiction-researcher. Use both specialists when a request "
-            "needs both kinds of research, then synthesize a concise answer using only facts "
-            "returned by the specialists. Do not add rates, formulas, examples, procedures, or "
-            "jurisdiction-specific claims from your own knowledge. State that actual rules vary "
-            "by jurisdiction."
+            "You coordinate educational, citation-backed tax research. Confirm the tax issue, "
+            "jurisdictions, and effective date; state missing scope as an assumption. Delegate "
+            "substantive research to tax-researcher and cross-jurisdiction comparison to "
+            "jurisdiction-researcher. Synthesize only claims supported by retrieved excerpts. "
+            "For every material claim, include its source title, section, URL, excerpt_id, and a "
+            "short supporting quote. Separate conclusions, unresolved questions, and sources. "
+            "Say 'insufficient evidence' when support is absent. This is educational research "
+            "that requires qualified human review, not tax advice."
         ),
         subagents=[tax_researcher, jurisdiction_researcher],
         backend=backend,

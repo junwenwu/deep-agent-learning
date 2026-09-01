@@ -1,6 +1,6 @@
 ---
 title: Learn Deep Agents with a Tax Briefing Agent
-description: A small LangChain Deep Agents example with specialist subagents and persistent artifacts
+description: A citation-aware LangChain Deep Agents example with authoritative local sources
 ms.date: 2026-08-31
 ms.topic: tutorial
 ---
@@ -14,10 +14,10 @@ enough to trace from the user request to the final answer.
 The example has six moving parts:
 
 1. A coordinator receives the question and plans the work.
-2. The built-in `task` tool delegates tax concepts to `tax-researcher`.
-3. The tax specialist calls `lookup_tax_topic` in its isolated context.
-4. A `jurisdiction-researcher` handles federal, state, and local scope questions.
-5. The results return to the coordinator, which writes the final briefing.
+2. The built-in `task` tool delegates substantive research to `tax-researcher`.
+3. The specialist searches a versioned local corpus of official tax guidance.
+4. A `jurisdiction-researcher` compares date-filtered evidence across jurisdictions.
+5. The coordinator writes a citation-backed briefing and identifies evidence gaps.
 6. An optional filesystem backend persists the briefing in an isolated artifact directory.
 
 Deep Agents installs filesystem, context-management, and general-purpose subagent
@@ -51,11 +51,13 @@ Expected flow:
 Coordinator
   -> task(subagent_type='tax-researcher')
 Tax researcher
-  -> lookup_tax_topic(topic)
+  -> search_tax_sources(query, jurisdictions, effective_on, limit)
+  -> read_tax_source(excerpt_id)
 Coordinator
   -> task(subagent_type='jurisdiction-researcher')
 Jurisdiction researcher
-  -> lookup_tax_jurisdiction(jurisdiction)
+  -> search_tax_sources(query, jurisdictions, effective_on, limit)
+  -> read_tax_source(excerpt_id)
 Coordinator
   -> final answer
 ```
@@ -64,20 +66,25 @@ Open [src/deep_agent_learning/agent.py](src/deep_agent_learning/agent.py) and fi
 `create_agent`. Its call to `create_deep_agent` constructs and returns a compiled
 LangGraph graph rather than invoking the model immediately.
 
-## Step 2: Understand the tool
+## Step 2: Understand the retrieval tools
 
-`lookup_tax_topic` is a normal typed Python function with a descriptive docstring.
-Deep Agents exposes it to the model as a tool. The model uses the function name,
-signature, and docstring to decide when and how to call it.
+`search_tax_sources` and `read_tax_source` are ordinary typed Python functions.
+Deep Agents exposes them to the model as tools. Search applies lexical ranking,
+jurisdiction filtering, and inclusive effective-date filtering over the packaged
+[`tax_sources.json`](src/deep_agent_learning/knowledge/tax_sources.json) corpus.
+Read resolves a stable excerpt ID to the exact text and citation metadata.
 
-Try the tool without an LLM:
+Try retrieval without an LLM:
 
 ```bash
-uv run --offline --no-sync python -c "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('sales tax'))"
+uv run --offline --no-sync python -c \
+  "from deep_agent_learning import search_tax_sources; print(search_tax_sources('pass-through entity election', ['New York', 'California'], '2026-08-31'))"
 ```
 
-Keeping the first tool deterministic makes the agent trace easier to understand
-and the behavior easy to test.
+Each result includes its issuing authority, jurisdiction, source type, publication
+date, effective range, URL, section, excerpt text, and stable identifiers. The
+corpus currently contains selected official New York and California PTET guidance
+for learning purposes. It is bounded and reproducible, not comprehensive.
 
 ## Step 3: Understand the subagent
 
@@ -86,7 +93,7 @@ The `tax_researcher` dictionary defines a specialist with four important fields:
 * `name` becomes the value used by the coordinator's `task` call
 * `description` tells the coordinator when to delegate
 * `system_prompt` defines the specialist's behavior
-* `tools` limits the specialist to the local catalog tool, in addition to the
+* `tools` limits the specialist to the bounded retrieval tools, in addition to the
   Deep Agents middleware tools it receives
 
 The subagent gets an isolated context window. Its detailed tool interactions do
@@ -150,12 +157,12 @@ uv run --offline --no-sync deep-agent-learning
 
 No `AZURE_OPENAI_API_KEY` is needed. In Azure-hosted environments, the same code
 can use a managed identity through `DefaultAzureCredential`. The default question
-compares sales tax and income tax. You can pass another question as a positional
-argument:
+compares New York and California pass-through entity tax guidance as of August 31,
+2026. You can pass another question as a positional argument:
 
 ```bash
 uv run --offline --no-sync deep-agent-learning \
-  "Explain income tax and identify when it is collected"
+  "Compare PTET eligibility in New York and California as of 2026-08-31"
 ```
 
 To use the public OpenAI service instead, set `OPENAI_API_KEY` and pass a
@@ -167,7 +174,7 @@ workspace:
 ```bash
 uv run --offline --no-sync deep-agent-learning \
   --workspace artifacts \
-  "Create a concise briefing about property tax and local jurisdiction."
+  "Create a cited PTET comparison for New York and California as of 2026-08-31."
 ```
 
 The agent sees the virtual path `/briefing.md`, while `FilesystemBackend` maps it
@@ -181,12 +188,12 @@ database and reuse the same thread ID:
 uv run --offline --no-sync deep-agent-learning \
   --checkpoint-db .deep-agent/checkpoints.sqlite \
   --thread-id tax-session \
-  "Explain property tax in one sentence."
+  "Research California's PTE election as of 2026-08-31."
 
 uv run --offline --no-sync deep-agent-learning \
   --checkpoint-db .deep-agent/checkpoints.sqlite \
   --thread-id tax-session \
-  "Which tax topic did we discuss?"
+  "Which source and effective date did we use?"
 ```
 
 Checkpoint databases contain conversation and graph state. The local
@@ -199,7 +206,7 @@ and enable tracing explicitly:
 uv run --offline --no-sync deep-agent-learning \
   --trace \
   --trace-project deep-agent-learning \
-  "Compare property tax with state and local tax jurisdictions."
+  "Compare New York and California PTET guidance as of 2026-08-31."
 ```
 
 Tracing can include prompts, responses, and tool results. Use synthetic or
@@ -211,8 +218,8 @@ Read the returned message history or connect LangSmith tracing to see this seque
 
 1. The coordinator decides to delegate.
 2. `task` starts `tax-researcher` in an isolated context.
-3. The specialist calls `lookup_tax_topic` for each requested concept.
-4. The specialist summarizes its findings.
+3. The specialist searches by issue, jurisdiction, and effective date.
+4. The specialist reads cited excerpts and returns supported claims.
 5. The coordinator synthesizes the final response.
 
 The important distinction is that a deep agent is not a single longer prompt. It
@@ -232,5 +239,6 @@ uv run --offline --no-sync ruff check .
 
 Continue with the consolidated blog-style guide,
 [Deep Agents from Scratch](docs/README.md). It builds the example one boundary
-at a time: deterministic tools, specialist routing, filesystem artifacts, SQLite
-checkpoints, LangSmith tracing, evaluation, and migration to another domain.
+at a time: bounded retrieval, provenance-aware specialist routing, filesystem
+artifacts, SQLite checkpoints, LangSmith tracing, evaluation, and migration to
+another domain.

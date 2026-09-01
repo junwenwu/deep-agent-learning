@@ -1,0 +1,58 @@
+[
+  {
+    "excerpt_id": "ca-pte-eligibility-2026",
+    "source_id": "ca-ftb-pte-elective-tax",
+    "title": "Pass-through entity (PTE) elective tax",
+    "issuing_authority": "California Franchise Tax Board",
+    "jurisdiction": "California",
+    "source_type": "administrative guidance",
+    "published_on": "2026-04-23",
+    "effective_from": "2021-01-01",
+    "effective_to": "2030-12-31",
+    "url": "https://www.ftb.ca.gov/file/business/credits/pass-through-entity-elective-tax/index.html",
+    "section": "Do you qualify?",
+    "text": "A qualifying PTE is an entity taxed as a partnership or S corporation. A qualified PTE does not include publicly traded partnerships or an entity permitted or required to be in a combined reporting group."
+  },
+  {
+    "excerpt_id": "ca-pte-election-2026",
+    "source_id": "ca-ftb-pte-elective-tax",
+    "title": "Pass-through entity (PTE) elective tax",
+    "issuing_authority": "California Franchise Tax Board",
+    "jurisdiction": "California",
+    "source_type": "administrative guidance",
+    "published_on": "2026-04-23",
+    "effective_from": "2026-01-01",
+    "effective_to": "2030-12-31",
+    "url": "https://www.ftb.ca.gov/file/business/credits/pass-through-entity-elective-tax/index.html#PTE-elective-tax-election",
+    "section": "PTE elective tax election: 2026 to 2030 taxable years",
+    "text": "The election must be made on a timely filed original return by filing a completed FTB 3804 with the qualified entity's return and including the PTE elective tax amount on the designated line of the qualified entity's return. The qualified entity must make the required initial payment by June 15 of the taxable year of the election."
+  },
+  {
+    "excerpt_id": "ca-pte-overview-2026",
+    "source_id": "ca-ftb-pte-elective-tax",
+    "title": "Pass-through entity (PTE) elective tax",
+    "issuing_authority": "California Franchise Tax Board",
+    "jurisdiction": "California",
+    "source_type": "administrative guidance",
+    "published_on": "2026-04-23",
+    "effective_from": "2021-01-01",
+    "effective_to": "2030-12-31",
+    "url": "https://www.ftb.ca.gov/file/business/credits/pass-through-entity-elective-tax/index.html",
+    "section": "Overview",
+    "text": "For taxable years beginning on or after January 1, 2021, and before January 1, 2031, qualifying pass-through entities may annually elect to pay an entity-level state tax on income. For California purposes, qualified taxpayers receive a credit for their share of the entity-level tax, reducing their California personal income tax."
+  },
+  {
+    "excerpt_id": "ny-ptet-overview-2026",
+    "source_id": "ny-dtf-ptet",
+    "title": "Pass-through entity tax (PTET)",
+    "issuing_authority": "New York State Department of Taxation and Finance",
+    "jurisdiction": "New York",
+    "source_type": "administrative guidance",
+    "published_on": "2026-04-03",
+    "effective_from": "2021-01-01",
+    "effective_to": null,
+    "url": "https://www.tax.ny.gov/bus/ptet/",
+    "section": "Overview",
+    "text": "The PTET is an optional tax that partnerships or New York S corporations may annually elect to pay on certain income for tax years beginning on or after January 1, 2021. Partners, members, or shareholders subject to personal income tax may be eligible for a PTET credit on their New York State income tax returns."
+  }
+]

@@ -21,12 +21,7 @@ from deep_agent_learning.models import (
     configure_azure_environment,
     resolve_model,
 )
-from deep_agent_learning.tools import (
-    JURISDICTION_CATALOG,
-    TAX_CATALOG,
-    lookup_tax_jurisdiction,
-    lookup_tax_topic,
-)
+from deep_agent_learning.research import read_tax_source, search_tax_sources
 
 __all__ = [
     "ARTIFACT_NAME",
@@ -39,15 +34,13 @@ __all__ = [
     "EXIT_ERROR",
     "EXIT_FAILURE",
     "EXIT_SUCCESS",
-    "JURISDICTION_CATALOG",
     "REQUIRED_AZURE_ENVIRONMENT",
-    "TAX_CATALOG",
     "configure_azure_environment",
     "create_agent",
     "create_parser",
     "describe_agent",
-    "lookup_tax_jurisdiction",
-    "lookup_tax_topic",
     "main",
+    "read_tax_source",
     "resolve_model",
+    "search_tax_sources",
 ]

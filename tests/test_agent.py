@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from contextlib import contextmanager
 from types import SimpleNamespace
@@ -16,57 +17,68 @@ from deep_agent_learning import (
     configure_azure_environment,
     create_agent,
     describe_agent,
-    lookup_tax_jurisdiction,
-    lookup_tax_topic,
     main,
+    read_tax_source,
     resolve_model,
+    search_tax_sources,
 )
 
 
-def test_lookup_tax_topic_is_case_insensitive() -> None:
-    result = lookup_tax_topic("  Sales Tax ")
+def test_search_tax_sources_filters_jurisdiction_and_effective_date() -> None:
+    result = json.loads(
+        search_tax_sources(
+            "pass-through entity election",
+            jurisdictions=["California"],
+            effective_on="2026-08-31",
+        )
+    )
 
-    assert "seller" in result
-    assert "buyer" in result
-
-
-def test_lookup_property_tax_is_case_insensitive() -> None:
-    result = lookup_tax_topic("  PROPERTY Tax ")
-
-    assert "owner" in result
-    assert "local tax authority" in result
-
-
-def test_lookup_tax_topic_lists_known_topics_for_unknown_value() -> None:
-    result = lookup_tax_topic("estate tax")
-
-    assert "No exact match" in result
-    assert "income tax" in result
-    assert "property tax" in result
-    assert "sales tax" in result
+    assert result["result_count"] >= 1
+    assert {item["jurisdiction"] for item in result["results"]} == {"California"}
+    assert all(item["effective_from"] <= "2026-08-31" for item in result["results"])
+    assert all(item["url"].startswith("https://") for item in result["results"])
 
 
-def test_lookup_tax_jurisdiction_is_case_insensitive() -> None:
-    result = lookup_tax_jurisdiction("  STATE ")
+def test_search_tax_sources_excludes_expired_guidance() -> None:
+    result = json.loads(
+        search_tax_sources(
+            "pass-through entity election",
+            jurisdictions=["California"],
+            effective_on="2031-01-01",
+        )
+    )
 
-    assert "within one state" in result
-    assert "local taxes" in result
+    assert result["result_count"] == 0
+    assert result["results"] == []
 
 
-def test_lookup_tax_jurisdiction_lists_known_levels() -> None:
-    result = lookup_tax_jurisdiction("international")
+def test_read_tax_source_returns_stable_citation_metadata() -> None:
+    result = json.loads(read_tax_source("ny-ptet-overview-2026"))
 
-    assert "No exact match" in result
-    assert "federal, local, state" in result
+    assert result["issuing_authority"] == (
+        "New York State Department of Taxation and Finance"
+    )
+    assert result["section"] == "Overview"
+    assert result["published_on"] == "2026-04-03"
+    assert result["url"] == "https://www.tax.ny.gov/bus/ptet/"
+
+
+def test_search_tax_sources_rejects_invalid_date() -> None:
+    try:
+        search_tax_sources("PTET", effective_on="August 31, 2026")
+    except ValueError as error:
+        assert "YYYY-MM-DD" in str(error)
+    else:
+        raise AssertionError("Expected an invalid effective date to be rejected.")
 
 
 def test_describe_agent_shows_delegation_path() -> None:
     result = describe_agent("openai:test-model")
 
     assert "task(subagent_type='tax-researcher')" in result
-    assert "lookup_tax_topic(topic)" in result
+    assert "search_tax_sources(query, jurisdictions, effective_on, limit)" in result
+    assert "read_tax_source(excerpt_id)" in result
     assert "task(subagent_type='jurisdiction-researcher')" in result
-    assert "lookup_tax_jurisdiction(jurisdiction)" in result
 
 
 def test_create_agent_registers_specialists_with_distinct_tools(
@@ -88,12 +100,12 @@ def test_create_agent_registers_specialists_with_distinct_tools(
         "tax-researcher",
         "jurisdiction-researcher",
     ]
-    assert subagents[0]["tools"] == [lookup_tax_topic]
-    assert subagents[1]["tools"] == [lookup_tax_jurisdiction]
-    assert "Return only facts present in the tool output" in subagents[0]["system_prompt"]
-    assert "Return only facts present in the tool output" in subagents[1]["system_prompt"]
-    assert "Use both specialists" in captured["system_prompt"]
-    assert "using only facts returned by the specialists" in captured["system_prompt"]
+    assert subagents[0]["tools"] == [search_tax_sources, read_tax_source]
+    assert subagents[1]["tools"] == [search_tax_sources, read_tax_source]
+    assert "attach the excerpt_id" in subagents[0]["system_prompt"]
+    assert "Search each requested jurisdiction separately" in subagents[1]["system_prompt"]
+    assert "Synthesize only claims supported" in captured["system_prompt"]
+    assert "qualified human review" in captured["system_prompt"]
     backend = captured["backend"]
     assert type(backend).__name__ == "FilesystemBackend"
     assert backend.cwd == tmp_path.resolve()

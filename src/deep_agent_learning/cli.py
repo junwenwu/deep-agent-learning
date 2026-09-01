@@ -27,7 +27,8 @@ EXIT_ERROR = 2
 ARTIFACT_NAME = "briefing.md"
 DEFAULT_TRACE_PROJECT = "deep-agent-learning"
 DEFAULT_QUESTION = (
-    "Compare sales tax and income tax. Explain who pays each and when it is collected."
+    "Compare pass-through entity tax guidance in New York and California as of 2026-08-31. "
+    "Cite the authoritative excerpts and identify unresolved questions."
 )
 
 
@@ -97,12 +98,14 @@ def describe_agent(
         [
             "Coordinator: plans and synthesizes the briefing",
             "  -> task(subagent_type='tax-researcher')",
-            "Tax researcher: researches concepts in an isolated context",
-            "  -> lookup_tax_topic(topic)",
+            "Tax researcher: retrieves authoritative evidence in an isolated context",
+            "  -> search_tax_sources(query, jurisdictions, effective_on, limit)",
+            "  -> read_tax_source(excerpt_id)",
             "Coordinator: routes jurisdiction research",
             "  -> task(subagent_type='jurisdiction-researcher')",
-            "Jurisdiction researcher: researches where rules apply",
-            "  -> lookup_tax_jurisdiction(jurisdiction)",
+            "Jurisdiction researcher: compares date-filtered jurisdiction evidence",
+            "  -> search_tax_sources(query, jurisdictions, effective_on, limit)",
+            "  -> read_tax_source(excerpt_id)",
             "Result: returns to the coordinator for the final answer",
         ]
     )

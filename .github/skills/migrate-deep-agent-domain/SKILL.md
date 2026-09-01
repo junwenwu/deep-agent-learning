@@ -105,28 +105,28 @@ For each specialist, define:
 * A minimal custom tool list
 * A result contract the coordinator can synthesize
 
-For a local catalog, preserve the existing result contract: an exact approved
-catalog string on success and a deterministic `No exact match` response listing
-known values on failure. If the user explicitly introduces external or multiple
-sources, design a separate structured result with status, claims, source
-identifiers, errors, and caveats before editing the coordinator.
+For a local corpus, preserve the existing evidence contract: stable excerpt and
+source identifiers, issuing authority, jurisdiction, source type, publication and
+effective dates, URL, section, and exact approved text. Preserve explicit empty
+results when no approved evidence matches. Do not fall back to model memory.
 
 Avoid specialists with overlapping descriptions and identical tools. Keep
 cross-domain planning and final synthesis in the coordinator.
 
-### Step 3: Replace deterministic domain tools
+### Step 3: Replace deterministic domain retrieval
 
-Update `src/deep_agent_learning/tools.py`:
+Update `src/deep_agent_learning/research.py` and the packaged knowledge corpus:
 
-1. Replace `TAX_CATALOG` and `JURISDICTION_CATALOG` with domain-owned knowledge
-   sources or rename them when the concepts still apply.
-2. Rename `lookup_tax_topic` and `lookup_tax_jurisdiction` to clear domain verbs.
-3. Preserve typed parameters, descriptive docstrings, input normalization, and
-   deterministic unknown-value responses.
-4. Return only approved source content. Do not use the model as an untracked
-   fallback when a lookup misses.
-5. Export renamed public symbols from `src/deep_agent_learning/__init__.py`.
-6. Remove replaced tax-only exports and preserve generic public APIs such as
+1. Replace `knowledge/tax_sources.json` with approved domain evidence records.
+2. Rename `search_tax_sources` and `read_tax_source` to clear domain verbs.
+3. Preserve typed parameters, descriptive docstrings, input validation, source
+   confinement, stable IDs, and deterministic empty results.
+4. Preserve relevant metadata filters, such as jurisdiction and effective date,
+   or replace them with explicit target-domain filters.
+5. Return only approved source content. Do not use the model as an untracked
+   fallback when retrieval misses.
+6. Export renamed public symbols from `src/deep_agent_learning/__init__.py`.
+7. Remove replaced tax-only exports and preserve generic public APIs such as
    `create_agent`, model configuration, CLI flags, and exit codes.
 
 If the target source is an API, database, or retrieval index, keep network and

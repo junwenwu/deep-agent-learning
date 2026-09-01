@@ -16,23 +16,25 @@ estimated_reading_time: 45
 ## Learn the system one boundary at a time
 
 The fastest way to understand a deep agent is to make every component earn its
-place. We will build an educational tax briefing agent from a deterministic
-catalog, then add delegation, a second specialist, file artifacts, durable
-conversation state, and tracing. Each stage changes one architectural boundary
-while keeping the earlier behavior intact.
+place. We will build an educational tax research agent over a small, versioned
+corpus of official guidance, then examine delegation, cross-jurisdiction
+comparison, file artifacts, durable conversation state, and tracing. Each stage
+changes one architectural boundary while keeping the earlier behavior intact.
 
 The completed application contains:
 
 * A coordinator that plans work and synthesizes the answer
-* A `tax-researcher` for income, property, and sales tax concepts
-* A `jurisdiction-researcher` for federal, state, and local scope
-* One deterministic catalog tool per specialist
+* A `tax-researcher` that finds citation-backed substantive guidance
+* A `jurisdiction-researcher` that compares date-filtered jurisdiction evidence
+* Bounded search and read tools over selected official source excerpts
 * An optional confined filesystem for Markdown briefings
 * Optional SQLite checkpoints for resumable conversation threads
 * Optional LangSmith tracing for behavior inspection and evaluation
 
-The example is educational. It is not tax advice, and its small local catalogs
-are intentionally not authoritative tax sources.
+The included excerpts come from official New York and California tax authority
+pages, but the corpus is intentionally small and may not contain all controlling
+authority. The example is educational research, not tax advice. Every conclusion
+requires review by a qualified person against current primary authority.
 
 ## See the finished architecture
 
@@ -43,10 +45,12 @@ flowchart LR
     Trace --> Coordinator[Coordinator]
     Coordinator -->|task| Tax[tax-researcher]
     Coordinator -->|task| Scope[jurisdiction-researcher]
-    Tax --> TaxTool[lookup_tax_topic]
-    Scope --> ScopeTool[lookup_tax_jurisdiction]
-    TaxTool --> TaxCatalog[(Tax catalog)]
-    ScopeTool --> ScopeCatalog[(Jurisdiction catalog)]
+    Tax --> Search[search_tax_sources]
+    Scope --> Search
+    Search --> Corpus[(Versioned source corpus)]
+    Tax --> Read[read_tax_source]
+    Scope --> Read
+    Read --> Corpus
     Tax --> Coordinator
     Scope --> Coordinator
     Coordinator --> Answer[Final response]
@@ -56,8 +60,8 @@ flowchart LR
 ```
 
 The coordinator owns planning and synthesis. Specialists own narrow research
-jobs. Tools own deterministic facts. Persistence and observability wrap the
-graph instead of changing those responsibilities.
+jobs. Tools own retrieval, date filtering, and evidence identity. Persistence
+and observability wrap the graph instead of changing those responsibilities.
 
 ## Prepare the project
 
@@ -112,12 +116,14 @@ Azure deployment: DeepAgent_Learning
 Underlying model: gpt-5-mini (2025-08-07)
 Coordinator: plans and synthesizes the briefing
   -> task(subagent_type='tax-researcher')
-Tax researcher: researches concepts in an isolated context
-  -> lookup_tax_topic(topic)
+Tax researcher: retrieves authoritative evidence in an isolated context
+  -> search_tax_sources(query, jurisdictions, effective_on, limit)
+  -> read_tax_source(excerpt_id)
 Coordinator: routes jurisdiction research
   -> task(subagent_type='jurisdiction-researcher')
-Jurisdiction researcher: researches where rules apply
-  -> lookup_tax_jurisdiction(jurisdiction)
+Jurisdiction researcher: compares date-filtered jurisdiction evidence
+  -> search_tax_sources(query, jurisdictions, effective_on, limit)
+  -> read_tax_source(excerpt_id)
 Result: returns to the coordinator for the final answer
 ```
 
@@ -126,12 +132,13 @@ deployment name, which currently points to `gpt-5-mini` version `2025-08-07`.
 The inspection branch in [`cli.py`](../src/deep_agent_learning/cli.py) returns
 before graph construction.
 
-## Build a deterministic tool
+## Build a bounded retrieval layer
 
-Open [`tools.py`](../src/deep_agent_learning/tools.py). `TAX_CATALOG` stores a
-small set of known facts, and `lookup_tax_topic` normalizes its input before
-performing an exact lookup. Unknown values produce a list of supported topics
-instead of an invented answer.
+Open [`research.py`](../src/deep_agent_learning/research.py). It loads the
+packaged [`tax_sources.json`](../src/deep_agent_learning/knowledge/tax_sources.json)
+corpus and exposes two operations. `search_tax_sources` ranks matching excerpts
+after applying optional jurisdiction and effective-date filters.
+`read_tax_source` resolves one stable excerpt ID to its complete evidence record.
 
 Deep Agents can expose an ordinary typed Python function as a tool. Its name,
 parameter types, and docstring tell the model how to call it. Test the function
@@ -139,14 +146,17 @@ without an LLM:
 
 ```bash
 uv run --offline --no-sync python -c \
-  "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('sales tax'))"
+  "from deep_agent_learning import search_tax_sources; print(search_tax_sources('pass-through entity election', ['New York', 'California'], '2026-08-31'))"
 
 uv run --offline --no-sync python -c \
-  "from deep_agent_learning import lookup_tax_topic; print(lookup_tax_topic('estate tax'))"
+  "from deep_agent_learning import read_tax_source; print(read_tax_source('ny-ptet-overview-2026'))"
 ```
 
-The deterministic boundary is useful for learning and testing. A failed lookup
-can be diagnosed without paying for a model call or reasoning about prompts.
+Each JSON result preserves the issuing authority, jurisdiction, source type,
+publication date, effective range, URL, section, exact excerpt, and stable IDs.
+The model cannot select another file path, which keeps retrieval confined to the
+approved corpus. Empty results are evidence gaps rather than invitations to use
+model memory.
 
 ## Give the tool to a specialist
 
@@ -156,9 +166,9 @@ Open [`agent.py`](../src/deep_agent_learning/agent.py) and find
 ```python
 tax_researcher = {
     "name": "tax-researcher",
-    "description": "Look up and compare tax concepts using the local catalog...",
+  "description": "Find authoritative tax guidance and return evidence with citations...",
     "system_prompt": "You are an educational tax researcher...",
-    "tools": [lookup_tax_topic],
+  "tools": [search_tax_sources, read_tax_source],
     "model": model,
 }
 ```
@@ -230,7 +240,8 @@ managed identity when hosted in Azure.
 
 ## Run the first live request
 
-The default request compares sales tax with income tax:
+The default request compares New York and California pass-through entity tax
+guidance as of August 31, 2026:
 
 ```bash
 uv run --offline --no-sync deep-agent-learning
@@ -240,40 +251,49 @@ Pass another question as the positional argument:
 
 ```bash
 uv run --offline --no-sync deep-agent-learning \
-  "Explain income tax and identify who pays it and when it is collected"
+  "Compare PTET eligibility in New York and California as of 2026-08-31"
 ```
 
 > [!NOTE]
 > Live commands send requests to the Azure deployment and may incur usage
 > charges. Inspection, direct tool calls, tests, and linting do not call a model.
 
-For the default request, the coordinator delegates to `tax-researcher`, which
-looks up both concepts and returns grounded facts. The coordinator then
-synthesizes the comparison and adds the required jurisdiction caveat.
+For the default request, the coordinator delegates substantive retrieval and
+cross-jurisdiction comparison. Specialists return claims tied to excerpt IDs,
+URLs, sections, and supporting quotations. The coordinator separates supported
+conclusions from unresolved questions and includes the human-review warning.
 
-## Extend a capability without changing orchestration
+## Extend the corpus without changing orchestration
 
-Property tax demonstrates the smallest useful extension. Because it is another
-tax concept, it belongs in `TAX_CATALOG`; it does not justify another specialist.
+Adding another approved excerpt is the smallest useful extension. It belongs in
+`tax_sources.json`; it does not justify another specialist. A source record must
+include the evidence and metadata needed to reproduce its use:
 
-The focused tests in [`test_agent.py`](../tests/test_agent.py) establish that
-lookup is case-insensitive and that unknown topics list every supported value:
-
-```python
-def test_lookup_property_tax_is_case_insensitive() -> None:
-    result = lookup_tax_topic("  PROPERTY Tax ")
-
-    assert "owner" in result
-    assert "local tax authority" in result
+```json
+{
+  "excerpt_id": "authority-topic-version",
+  "source_id": "authority-source",
+  "title": "Official source title",
+  "issuing_authority": "Issuing authority",
+  "jurisdiction": "Jurisdiction",
+  "source_type": "administrative guidance",
+  "published_on": "2026-04-23",
+  "effective_from": "2026-01-01",
+  "effective_to": "2030-12-31",
+  "url": "https://official.example/source",
+  "section": "Section title",
+  "text": "Exact approved excerpt."
+}
 ```
 
-The catalog gains one entry while the tool signature, specialist, coordinator,
-invocation shape, and authentication remain unchanged. Rebuild the non-editable
-wheel after editing source:
+Capture source text faithfully, record when it applies, and use a stable unique
+excerpt ID. Do not paraphrase into stronger claims during ingestion. The tool
+signatures, specialists, coordinator, invocation shape, and authentication remain
+unchanged. Rebuild the non-editable wheel after editing package data:
 
 ```bash
 uv sync --no-editable --reinstall-package deep-agent-learning --offline
-uv run --offline --no-sync pytest -q tests/test_agent.py -k lookup_tax_topic
+uv run --offline --no-sync pytest -q tests/test_agent.py -k tax_source
 ```
 
 Without the reinstall, Python may import the previously installed catalog even
@@ -281,32 +301,20 @@ though the source file contains the new entry.
 
 ## Add a specialist when responsibility changes
 
-Jurisdiction research is different from adding another catalog fact. It answers
-where rules apply, uses a separate data source, and introduces a routing choice.
-That is a meaningful specialist boundary.
+Jurisdiction comparison is different from adding another excerpt. It searches
+each requested jurisdiction independently, checks a shared effective date, and
+identifies evidence that cannot support a direct comparison. That is a meaningful
+specialist boundary even though both specialists use the same bounded tools.
 
-`JURISDICTION_CATALOG` and `lookup_tax_jurisdiction` follow the same deterministic
-normalization and fallback pattern as the topic tool. Test both paths directly:
+Their descriptions and result contracts distinguish responsibility:
 
-```bash
-uv run --offline --no-sync python -c \
-  "from deep_agent_learning import lookup_tax_jurisdiction; print(lookup_tax_jurisdiction('state'))"
-
-uv run --offline --no-sync python -c \
-  "from deep_agent_learning import lookup_tax_jurisdiction; print(lookup_tax_jurisdiction('international'))"
-```
-
-`jurisdiction_researcher` receives only `lookup_tax_jurisdiction`, while
-`tax_researcher` receives only `lookup_tax_topic`. Their descriptions and prompts
-reinforce the same distinction used by the coordinator:
-
-1. Concept-only requests use `tax-researcher`.
-2. Scope-only requests use `jurisdiction-researcher`.
-3. Mixed requests use both before synthesis.
+1. Substantive issue research uses `tax-researcher`.
+2. Cross-jurisdiction comparison uses `jurisdiction-researcher`.
+3. Comparison requests can use both before synthesis.
 
 The construction test replaces `create_deep_agent` with a capture function. It
-asserts the registered names, isolated tool lists, grounding language, and
-mixed-request policy without constructing a live agent.
+asserts the registered names, bounded tool lists, citation language, and
+human-review policy without constructing a live agent.
 
 ```bash
 uv run --offline --no-sync pytest -q \
@@ -345,7 +353,7 @@ When a workspace is present, the CLI asks the coordinator to write
 ```bash
 uv run --offline --no-sync deep-agent-learning \
   --workspace artifacts \
-  "Create a concise briefing about property tax and local jurisdiction."
+  "Create a cited PTET comparison for New York and California as of 2026-08-31."
 ```
 
 After invocation, deterministic CLI code checks `Path.is_file()`. A model saying
@@ -372,12 +380,12 @@ pair: either provide both or neither.
 uv run --offline --no-sync deep-agent-learning \
   --checkpoint-db .deep-agent/checkpoints.sqlite \
   --thread-id learning-demo \
-  "Explain property tax in one sentence, and remember my code word is cedar."
+  "Research California's PTE election as of 2026-08-31, and remember my code word is cedar."
 
 uv run --offline --no-sync deep-agent-learning \
   --checkpoint-db .deep-agent/checkpoints.sqlite \
   --thread-id learning-demo \
-  "What code word did I give you, and which topic did we discuss?"
+  "What code word did I give you, and which source did we use?"
 ```
 
 The saver remains open while LangGraph reads and writes checkpoints. A later
@@ -428,7 +436,7 @@ Upload one mixed run after configuring the key:
 uv run --offline --no-sync deep-agent-learning \
   --trace \
   --trace-project tax-learning \
-  "Compare property tax with state and local tax jurisdictions."
+  "Compare New York and California PTET guidance as of 2026-08-31."
 ```
 
 The tracing context attaches a project name, stable tags, and non-secret
@@ -446,16 +454,17 @@ behavior matrix:
 
 | Request type | Expected route | Expected evidence |
 | --- | --- | --- |
-| Tax concept only | `tax-researcher` | `lookup_tax_topic` call |
-| Jurisdiction only | `jurisdiction-researcher` | `lookup_tax_jurisdiction` call |
-| Mixed concept and scope | Both specialists | Both deterministic tools |
+| Substantive issue | `tax-researcher` | Search plus reads of cited excerpts |
+| Jurisdiction comparison | `jurisdiction-researcher` | Separate filtered searches |
+| Full research comparison | Both specialists | Claims mapped to excerpt IDs |
+| Unsupported issue or date | Relevant specialists | Explicit insufficient evidence |
 | Artifact request | Relevant specialists and filesystem | `write_file` and host file |
 | Follow-up in a thread | Route using restored context | Same checkpoint thread ID |
 
 Review four dimensions:
 
 * Routing correctness: the coordinator selects the responsible specialist
-* Tool grounding: specialists call catalogs and avoid unsupported facts
+* Tool grounding: specialists cite retrieved excerpts and avoid unsupported facts
 * Completion: the requested response or artifact exists
 * Efficiency: unnecessary specialist, model, and tool calls are absent
 
@@ -480,9 +489,10 @@ uv run --offline --no-sync pytest -q
 uv run --offline --no-sync ruff check .
 ```
 
-The tests cover deterministic lookup behavior, graph registration, filesystem
-configuration, artifact verification, checkpoint wiring, trace configuration,
-trace flushing, model metadata, dotenv loading, and credential failure paths.
+The tests cover retrieval filters, citation metadata, graph registration,
+filesystem configuration, artifact verification, checkpoint wiring, trace
+configuration, trace flushing, model metadata, dotenv loading, and credential
+failure paths.
 
 ## Carry the pattern into another domain
 
@@ -492,7 +502,7 @@ target environment requires a deliberate change.
 
 Migrate the domain through these boundaries:
 
-1. Replace the local catalogs and lookup functions with target-domain sources.
+1. Replace the packaged corpus and retrieval vocabulary with target-domain sources.
 2. Define specialists around distinct responsibilities, not lists of keywords.
 3. Give each specialist only the tools required for its job.
 4. Rewrite coordinator routing and synthesis constraints using the new contracts.
@@ -508,8 +518,8 @@ artifact, and safety constraints.
 
 ## What the sequence teaches
 
-New facts usually belong in an existing tool. New responsibility boundaries may
-justify another specialist. Side effects need deterministic verification.
+New approved evidence usually belongs in the existing corpus. New responsibility
+boundaries may justify another specialist. Side effects need deterministic verification.
 Conversation state, artifacts, and long-term memory are different persistence
 problems. Tracing reveals behavior, while evaluation decides whether that
 behavior meets explicit expectations.
